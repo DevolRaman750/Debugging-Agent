@@ -1,0 +1,734 @@
+{
+  "classified_tree": {
+    "span_id": "cbc75ac1c3557338",
+    "func_full_name": "checkout",
+    "span_latency": 1183.405,
+    "span_utc_start_time": "2026-02-01T10:31:06.159391Z",
+    "span_utc_end_time": "2026-02-01T10:31:07.342796Z",
+    "logs": [
+      {
+        "log_utc_timestamp": "2026-02-01T10:31:06.159425Z",
+        "log_level": "INFO",
+        "log_file_name": "",
+        "log_func_name": "",
+        "log_message": "Checkout flow started",
+        "log_line_number": 0
+      },
+      {
+        "log_utc_timestamp": "2026-02-01T10:31:07.342757Z",
+        "log_level": "INFO",
+        "log_file_name": "",
+        "log_func_name": "",
+        "log_message": "Order successfully placed",
+        "log_line_number": 0
+      }
+    ],
+    "children_spans": [
+      {
+        "span_id": "889a02a278b271f7",
+        "func_full_name": "health_check",
+        "span_latency": 1.599,
+        "span_utc_start_time": "2026-02-01T10:31:06.159490Z",
+        "span_utc_end_time": "2026-02-01T10:31:06.161089Z",
+        "logs": [
+          {
+            "log_utc_timestamp": "2026-02-01T10:31:06.159507Z",
+            "log_level": "INFO",
+            "log_file_name": "",
+            "log_func_name": "",
+            "log_message": "Health check ping",
+            "log_line_number": 0
+          }
+        ],
+        "children_spans": [],
+        "span_type": "health_check",
+        "classification_confidence": 0.9
+      },
+      {
+        "span_id": "82c5e22114b6b249",
+        "func_full_name": "auth_service",
+        "span_latency": 150.998,
+        "span_utc_start_time": "2026-02-01T10:31:06.161198Z",
+        "span_utc_end_time": "2026-02-01T10:31:06.312196Z",
+        "logs": [
+          {
+            "log_utc_timestamp": "2026-02-01T10:31:06.161218Z",
+            "log_level": "INFO",
+            "log_file_name": "",
+            "log_func_name": "",
+            "log_message": "Validating user token",
+            "log_line_number": 0
+          }
+        ],
+        "children_spans": [
+          {
+            "span_id": "4eeff84e9b010ee3",
+            "func_full_name": "redis_cache_lookup",
+            "span_latency": 50.469,
+            "span_utc_start_time": "2026-02-01T10:31:06.261675Z",
+            "span_utc_end_time": "2026-02-01T10:31:06.312144Z",
+            "logs": [
+              {
+                "log_utc_timestamp": "2026-02-01T10:31:06.261697Z",
+                "log_level": "INFO",
+                "log_file_name": "",
+                "log_func_name": "",
+                "log_message": "Checking session in Redis cache",
+                "log_line_number": 0
+              }
+            ],
+            "children_spans": [],
+            "span_type": "cache_op",
+            "classification_confidence": 0.9
+          }
+        ],
+        "span_type": "business_logic",
+        "classification_confidence": 0.5
+      },
+      {
+        "span_id": "1af546eb9383f154",
+        "func_full_name": "cart_service",
+        "span_latency": 101.059,
+        "span_utc_start_time": "2026-02-01T10:31:06.312279Z",
+        "span_utc_end_time": "2026-02-01T10:31:06.413338Z",
+        "logs": [
+          {
+            "log_utc_timestamp": "2026-02-01T10:31:06.312305Z",
+            "log_level": "INFO",
+            "log_file_name": "",
+            "log_func_name": "",
+            "log_message": "Calculating cart total",
+            "log_line_number": 0
+          }
+        ],
+        "children_spans": [
+          {
+            "span_id": "7990c33553c67255",
+            "func_full_name": "pricing_engine",
+            "span_latency": 50.318,
+            "span_utc_start_time": "2026-02-01T10:31:06.312338Z",
+            "span_utc_end_time": "2026-02-01T10:31:06.362656Z",
+            "logs": [
+              {
+                "log_utc_timestamp": "2026-02-01T10:31:06.312350Z",
+                "log_level": "INFO",
+                "log_file_name": "",
+                "log_func_name": "",
+                "log_message": "Applying discount codes",
+                "log_line_number": 0
+              }
+            ],
+            "children_spans": [],
+            "span_type": "business_logic",
+            "classification_confidence": 0.5
+          },
+          {
+            "span_id": "c1f8cb3d35f57812",
+            "func_full_name": "tax_service",
+            "span_latency": 50.452,
+            "span_utc_start_time": "2026-02-01T10:31:06.362836Z",
+            "span_utc_end_time": "2026-02-01T10:31:06.413288Z",
+            "logs": [
+              {
+                "log_utc_timestamp": "2026-02-01T10:31:06.362879Z",
+                "log_level": "INFO",
+                "log_file_name": "",
+                "log_func_name": "",
+                "log_message": "Computing tax for region",
+                "log_line_number": 0
+              }
+            ],
+            "children_spans": [],
+            "span_type": "business_logic",
+            "classification_confidence": 0.5
+          }
+        ],
+        "span_type": "business_logic",
+        "classification_confidence": 0.5
+      },
+      {
+        "span_id": "5150448daea7eb03",
+        "func_full_name": "inventory_service",
+        "span_latency": 401.454,
+        "span_utc_start_time": "2026-02-01T10:31:06.413485Z",
+        "span_utc_end_time": "2026-02-01T10:31:06.814939Z",
+        "logs": [
+          {
+            "log_utc_timestamp": "2026-02-01T10:31:06.413526Z",
+            "log_level": "INFO",
+            "log_file_name": "",
+            "log_func_name": "",
+            "log_message": "Checking inventory levels",
+            "log_line_number": 0
+          }
+        ],
+        "children_spans": [
+          {
+            "span_id": "a0c83decc1a810c1",
+            "func_full_name": "inventory_db_query",
+            "span_latency": 100.766,
+            "span_utc_start_time": "2026-02-01T10:31:06.413584Z",
+            "span_utc_end_time": "2026-02-01T10:31:06.514350Z",
+            "logs": [
+              {
+                "log_utc_timestamp": "2026-02-01T10:31:06.413605Z",
+                "log_level": "INFO",
+                "log_file_name": "",
+                "log_func_name": "",
+                "log_message": "SELECT stock FROM products WHERE id = ?",
+                "log_line_number": 0
+              }
+            ],
+            "children_spans": [],
+            "span_type": "db_query",
+            "classification_confidence": 0.9
+          },
+          {
+            "span_id": "14236d0139cac731",
+            "func_full_name": "warehouse_api_call",
+            "span_latency": 300.311,
+            "span_utc_start_time": "2026-02-01T10:31:06.514575Z",
+            "span_utc_end_time": "2026-02-01T10:31:06.814886Z",
+            "logs": [
+              {
+                "log_utc_timestamp": "2026-02-01T10:31:06.514640Z",
+                "log_level": "INFO",
+                "log_file_name": "",
+                "log_func_name": "",
+                "log_message": "Calling warehouse API",
+                "log_line_number": 0
+              },
+              {
+                "log_utc_timestamp": "2026-02-01T10:31:06.514667Z",
+                "log_level": "WARNING",
+                "log_file_name": "",
+                "log_func_name": "",
+                "log_message": "Warehouse API response slow",
+                "log_line_number": 0
+              }
+            ],
+            "children_spans": [],
+            "span_type": "business_logic",
+            "classification_confidence": 0.5
+          }
+        ],
+        "span_type": "business_logic",
+        "classification_confidence": 0.5
+      },
+      {
+        "span_id": "ff88fdb060323522",
+        "func_full_name": "user_loader",
+        "span_latency": 103.898,
+        "span_utc_start_time": "2026-02-01T10:31:06.815068Z",
+        "span_utc_end_time": "2026-02-01T10:31:06.918966Z",
+        "logs": [
+          {
+            "log_utc_timestamp": "2026-02-01T10:31:06.815109Z",
+            "log_level": "INFO",
+            "log_file_name": "",
+            "log_func_name": "",
+            "log_message": "Loading users with orders",
+            "log_line_number": 0
+          }
+        ],
+        "children_spans": [
+          {
+            "span_id": "94d52f65f5e4f713",
+            "func_full_name": "db_query_user_0",
+            "span_latency": 20.58,
+            "span_utc_start_time": "2026-02-01T10:31:06.815173Z",
+            "span_utc_end_time": "2026-02-01T10:31:06.835753Z",
+            "logs": [
+              {
+                "log_utc_timestamp": "2026-02-01T10:31:06.815215Z",
+                "log_level": "INFO",
+                "log_file_name": "",
+                "log_func_name": "",
+                "log_message": "SELECT * FROM orders WHERE user_id = 0",
+                "log_line_number": 0
+              }
+            ],
+            "children_spans": [],
+            "span_type": "db_query",
+            "classification_confidence": 0.9
+          },
+          {
+            "span_id": "2941a31a1e750a75",
+            "func_full_name": "db_query_user_1",
+            "span_latency": 20.586,
+            "span_utc_start_time": "2026-02-01T10:31:06.835934Z",
+            "span_utc_end_time": "2026-02-01T10:31:06.856520Z",
+            "logs": [
+              {
+                "log_utc_timestamp": "2026-02-01T10:31:06.835992Z",
+                "log_level": "INFO",
+                "log_file_name": "",
+                "log_func_name": "",
+                "log_message": "SELECT * FROM orders WHERE user_id = 1",
+                "log_line_number": 0
+              }
+            ],
+            "children_spans": [],
+            "span_type": "db_query",
+            "classification_confidence": 0.9
+          },
+          {
+            "span_id": "71b61f744bbb7c4f",
+            "func_full_name": "db_query_user_2",
+            "span_latency": 20.479,
+            "span_utc_start_time": "2026-02-01T10:31:06.856728Z",
+            "span_utc_end_time": "2026-02-01T10:31:06.877207Z",
+            "logs": [
+              {
+                "log_utc_timestamp": "2026-02-01T10:31:06.856773Z",
+                "log_level": "INFO",
+                "log_file_name": "",
+                "log_func_name": "",
+                "log_message": "SELECT * FROM orders WHERE user_id = 2",
+                "log_line_number": 0
+              }
+            ],
+            "children_spans": [],
+            "span_type": "db_query",
+            "classification_confidence": 0.9
+          },
+          {
+            "span_id": "dc08b80e7e2efd16",
+            "func_full_name": "db_query_user_3",
+            "span_latency": 20.596,
+            "span_utc_start_time": "2026-02-01T10:31:06.877375Z",
+            "span_utc_end_time": "2026-02-01T10:31:06.897971Z",
+            "logs": [
+              {
+                "log_utc_timestamp": "2026-02-01T10:31:06.877420Z",
+                "log_level": "INFO",
+                "log_file_name": "",
+                "log_func_name": "",
+                "log_message": "SELECT * FROM orders WHERE user_id = 3",
+                "log_line_number": 0
+              }
+            ],
+            "children_spans": [],
+            "span_type": "db_query",
+            "classification_confidence": 0.9
+          },
+          {
+            "span_id": "46ea5bc62b5311ec",
+            "func_full_name": "db_query_user_4",
+            "span_latency": 20.731,
+            "span_utc_start_time": "2026-02-01T10:31:06.898168Z",
+            "span_utc_end_time": "2026-02-01T10:31:06.918899Z",
+            "logs": [
+              {
+                "log_utc_timestamp": "2026-02-01T10:31:06.898213Z",
+                "log_level": "INFO",
+                "log_file_name": "",
+                "log_func_name": "",
+                "log_message": "SELECT * FROM orders WHERE user_id = 4",
+                "log_line_number": 0
+              }
+            ],
+            "children_spans": [],
+            "span_type": "db_query",
+            "classification_confidence": 0.9
+          }
+        ],
+        "span_type": "business_logic",
+        "classification_confidence": 0.5
+      },
+      {
+        "span_id": "164c012aa6880c67",
+        "func_full_name": "payment_service",
+        "span_latency": 402.947,
+        "span_utc_start_time": "2026-02-01T10:31:06.919092Z",
+        "span_utc_end_time": "2026-02-01T10:31:07.322039Z",
+        "logs": [
+          {
+            "log_utc_timestamp": "2026-02-01T10:31:06.919877Z",
+            "log_level": "INFO",
+            "log_file_name": "",
+            "log_func_name": "",
+            "log_message": "Initiating payment flow",
+            "log_line_number": 0
+          }
+        ],
+        "children_spans": [
+          {
+            "span_id": "1b973b22c7b90af6",
+            "func_full_name": "payment_gateway_attempt_1",
+            "span_latency": 200.573,
+            "span_utc_start_time": "2026-02-01T10:31:06.919961Z",
+            "span_utc_end_time": "2026-02-01T10:31:07.120534Z",
+            "logs": [
+              {
+                "log_utc_timestamp": "2026-02-01T10:31:06.919992Z",
+                "log_level": "INFO",
+                "log_file_name": "",
+                "log_func_name": "",
+                "log_message": "Calling payment gateway (attempt 1)",
+                "log_line_number": 0
+              },
+              {
+                "log_utc_timestamp": "2026-02-01T10:31:07.120506Z",
+                "log_level": "ERROR",
+                "log_file_name": "",
+                "log_func_name": "",
+                "log_message": "Timeout from bank API",
+                "log_line_number": 0
+              }
+            ],
+            "children_spans": [],
+            "span_type": "retry_loop",
+            "classification_confidence": 0.9
+          },
+          {
+            "span_id": "b9a46156a1f18797",
+            "func_full_name": "payment_gateway_attempt_2",
+            "span_latency": 201.28,
+            "span_utc_start_time": "2026-02-01T10:31:07.120700Z",
+            "span_utc_end_time": "2026-02-01T10:31:07.321980Z",
+            "logs": [
+              {
+                "log_utc_timestamp": "2026-02-01T10:31:07.120761Z",
+                "log_level": "INFO",
+                "log_file_name": "",
+                "log_func_name": "",
+                "log_message": "Calling payment gateway (attempt 2)",
+                "log_line_number": 0
+              },
+              {
+                "log_utc_timestamp": "2026-02-01T10:31:07.321939Z",
+                "log_level": "INFO",
+                "log_file_name": "",
+                "log_func_name": "",
+                "log_message": "Payment authorized successfully",
+                "log_line_number": 0
+              }
+            ],
+            "children_spans": [],
+            "span_type": "retry_loop",
+            "classification_confidence": 0.9
+          }
+        ],
+        "span_type": "business_logic",
+        "classification_confidence": 0.5
+      },
+      {
+        "span_id": "a2208aba793bbdff",
+        "func_full_name": "notification_service",
+        "span_latency": 20.545,
+        "span_utc_start_time": "2026-02-01T10:31:07.322159Z",
+        "span_utc_end_time": "2026-02-01T10:31:07.342704Z",
+        "logs": [
+          {
+            "log_utc_timestamp": "2026-02-01T10:31:07.322193Z",
+            "log_level": "INFO",
+            "log_file_name": "",
+            "log_func_name": "",
+            "log_message": "Preparing order confirmation",
+            "log_line_number": 0
+          }
+        ],
+        "children_spans": [
+          {
+            "span_id": "402ae912ad37984d",
+            "func_full_name": "kafka_publish_order_event",
+            "span_latency": 20.383,
+            "span_utc_start_time": "2026-02-01T10:31:07.322271Z",
+            "span_utc_end_time": "2026-02-01T10:31:07.342654Z",
+            "logs": [
+              {
+                "log_utc_timestamp": "2026-02-01T10:31:07.322294Z",
+                "log_level": "INFO",
+                "log_file_name": "",
+                "log_func_name": "",
+                "log_message": "Publishing to kafka topic: order-events",
+                "log_line_number": 0
+              }
+            ],
+            "children_spans": [],
+            "span_type": "business_logic",
+            "classification_confidence": 0.5
+          }
+        ],
+        "span_type": "business_logic",
+        "classification_confidence": 0.5
+      }
+    ],
+    "span_type": "business_logic",
+    "classification_confidence": 0.5
+  },
+  "suppression_stats": {
+    "original_span_count": 21,
+    "remaining_span_count": 20,
+    "suppressed_count": 1,
+    "collapsed_count": 0,
+    "compression_ratio": 1.05
+  },
+  "failure_report": {
+    "failure_spans": [
+      {
+        "span_id": "1b973b22c7b90af6",
+        "span_function": "payment_gateway_attempt_1",
+        "failure_type": "timeout",
+        "error_messages": [
+          "Timeout from bank API"
+        ],
+        "is_root_cause": true,
+        "depth_in_tree": 2
+      }
+    ],
+    "failure_chains": [],
+    "root_cause_candidates": [
+      "1b973b22c7b90af6"
+    ],
+    "has_failures": true
+  },
+  "pattern_matches": [
+    {
+      "pattern_id": "n_plus_1_query",
+      "pattern_name": "N+1 Query",
+      "pattern_category": "database",
+      "confidence": 0.9,
+      "matched_spans": [
+        "94d52f65f5e4f713",
+        "2941a31a1e750a75",
+        "71b61f744bbb7c4f",
+        "dc08b80e7e2efd16",
+        "46ea5bc62b5311ec"
+      ],
+      "matched_evidence": [
+        "db_query_user_0",
+        "db_query_user_1",
+        "db_query_user_2"
+      ],
+      "explanation": "Found 5 individual database queries that could be batched into a single query.",
+      "recommended_fix": "Use batch queries or JOINs instead of individual queries in a loop."
+    }
+  ],
+  "ranked_causes": {
+    "causes": [
+      {
+        "span_id": "1b973b22c7b90af6",
+        "span_function": "payment_gateway_attempt_1",
+        "score": 0.18511460000000002,
+        "rank": 1,
+        "contributing_factors": [
+          {
+            "factor_name": "error_density",
+            "factor_value": 0.5,
+            "weighted_contribution": 0.125
+          },
+          {
+            "factor_name": "latency_anomaly",
+            "factor_value": 0.10057300000000001,
+            "weighted_contribution": 0.020114600000000003
+          },
+          {
+            "factor_name": "depth",
+            "factor_value": 0.4,
+            "weighted_contribution": 0.04000000000000001
+          },
+          {
+            "factor_name": "pattern_match",
+            "factor_value": 0.0,
+            "weighted_contribution": 0.0
+          }
+        ],
+        "evidence": [
+          {
+            "span_id": "1b973b22c7b90af6",
+            "evidence_type": "error_log",
+            "description": "Timeout from bank API",
+            "timestamp": null
+          }
+        ]
+      }
+    ],
+    "confidence_level": "low",
+    "top_cause_score": 0.18511460000000002,
+    "score_gap": 0.18511460000000002
+  },
+  "compressed_context": {
+    "compressed_tree": {
+      "span_id": "cbc75ac1c3557338",
+      "function": "checkout",
+      "latency_ms": 1183.405,
+      "type": "business_logic",
+      "log_summary": "2 logs (0 errors)",
+      "children": [
+        {
+          "span_id": "82c5e22114b6b249",
+          "function": "auth_service",
+          "latency_ms": 150.998,
+          "type": "business_logic",
+          "log_summary": "1 logs (0 errors)",
+          "children": [
+            {
+              "span_id": "4eeff84e9b010ee3",
+              "function": "redis_cache_lookup",
+              "latency_ms": 50.469,
+              "type": "cache_op",
+              "log_summary": "1 logs (0 errors)"
+            }
+          ]
+        },
+        {
+          "span_id": "1af546eb9383f154",
+          "function": "cart_service",
+          "latency_ms": 101.059,
+          "type": "business_logic",
+          "log_summary": "1 logs (0 errors)",
+          "children": [
+            {
+              "span_id": "7990c33553c67255",
+              "function": "pricing_engine",
+              "latency_ms": 50.318,
+              "type": "business_logic",
+              "log_summary": "1 logs (0 errors)"
+            },
+            {
+              "span_id": "c1f8cb3d35f57812",
+              "function": "tax_service",
+              "latency_ms": 50.452,
+              "type": "business_logic",
+              "log_summary": "1 logs (0 errors)"
+            }
+          ]
+        },
+        {
+          "span_id": "5150448daea7eb03",
+          "function": "inventory_service",
+          "latency_ms": 401.454,
+          "type": "business_logic",
+          "log_summary": "1 logs (0 errors)",
+          "children": [
+            {
+              "span_id": "a0c83decc1a810c1",
+              "function": "inventory_db_query",
+              "latency_ms": 100.766,
+              "type": "db_query",
+              "log_summary": "1 logs (0 errors)"
+            },
+            {
+              "span_id": "14236d0139cac731",
+              "function": "warehouse_api_call",
+              "latency_ms": 300.311,
+              "type": "business_logic",
+              "log_summary": "2 logs (0 errors)"
+            }
+          ]
+        },
+        {
+          "span_id": "ff88fdb060323522",
+          "function": "user_loader",
+          "latency_ms": 103.898,
+          "type": "business_logic",
+          "log_summary": "1 logs (0 errors)",
+          "children": [
+            {
+              "span_id": "94d52f65f5e4f713",
+              "function": "db_query_user_0",
+              "latency_ms": 20.58,
+              "type": "db_query",
+              "log_summary": "1 logs (0 errors)"
+            },
+            {
+              "span_id": "2941a31a1e750a75",
+              "function": "db_query_user_1",
+              "latency_ms": 20.586,
+              "type": "db_query",
+              "log_summary": "1 logs (0 errors)"
+            },
+            {
+              "span_id": "71b61f744bbb7c4f",
+              "function": "db_query_user_2",
+              "latency_ms": 20.479,
+              "type": "db_query",
+              "log_summary": "1 logs (0 errors)"
+            },
+            {
+              "span_id": "dc08b80e7e2efd16",
+              "function": "db_query_user_3",
+              "latency_ms": 20.596,
+              "type": "db_query",
+              "log_summary": "1 logs (0 errors)"
+            },
+            {
+              "span_id": "46ea5bc62b5311ec",
+              "function": "db_query_user_4",
+              "latency_ms": 20.731,
+              "type": "db_query",
+              "log_summary": "1 logs (0 errors)"
+            }
+          ]
+        },
+        {
+          "span_id": "164c012aa6880c67",
+          "function": "payment_service",
+          "latency_ms": 402.947,
+          "type": "business_logic",
+          "log_summary": "1 logs (0 errors)",
+          "children": [
+            {
+              "span_id": "1b973b22c7b90af6",
+              "function": "payment_gateway_attempt_1",
+              "latency_ms": 200.573,
+              "type": "retry_loop",
+              "logs": [
+                {
+                  "level": "INFO",
+                  "message": "Calling payment gateway (attempt 1)"
+                },
+                {
+                  "level": "ERROR",
+                  "message": "Timeout from bank API"
+                }
+              ]
+            },
+            {
+              "span_id": "b9a46156a1f18797",
+              "function": "payment_gateway_attempt_2",
+              "latency_ms": 201.28,
+              "type": "retry_loop",
+              "log_summary": "2 logs (0 errors)"
+            }
+          ]
+        },
+        {
+          "span_id": "a2208aba793bbdff",
+          "function": "notification_service",
+          "latency_ms": 20.545,
+          "type": "business_logic",
+          "log_summary": "1 logs (0 errors)",
+          "children": [
+            {
+              "span_id": "402ae912ad37984d",
+              "function": "kafka_publish_order_event",
+              "latency_ms": 20.383,
+              "type": "business_logic",
+              "log_summary": "1 logs (0 errors)"
+            }
+          ]
+        }
+      ]
+    },
+    "token_count": 784,
+    "original_token_count": 2682,
+    "compression_ratio": 3.420918367346939,
+    "preserved_evidence": [
+      {
+        "span_id": "1b973b22c7b90af6",
+        "evidence_type": "error_log",
+        "description": "Timeout from bank API",
+        "timestamp": null
+      }
+    ],
+    "truncation_notes": [
+      "Compressed from 2682 to 784 tokens",
+      "Preserved top 1 cause spans in full detail"
+    ]
+  },
+  "fast_path_available": false,
+  "processing_time_ms": 10.612726211547852
+}
