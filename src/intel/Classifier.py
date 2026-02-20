@@ -12,7 +12,8 @@ SPAN_TYPE_PATTERNS = {
     ],
     SpanType.DB_QUERY: [
         r"sqlalchemy", r"psycopg", r"mysql", r"postgres", r"mongodb",
-        r"execute", r"query", r"select", r"insert", r"update", r"delete"
+        r"execute", r"query", r"select", r"insert", r"update", r"delete",
+        r"^db[_\s]",  # function names like db_get_product, db_query, etc.
     ],
     SpanType.HTTP_REQUEST: [
         r"requests\.", r"httpx", r"aiohttp", r"urllib", r"fetch"

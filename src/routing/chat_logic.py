@@ -21,7 +21,7 @@ class ChatLogic:
     async def post_chat(
         self,
         req_data: ChatRequest,
-        openai_token: str | None = None,
+        groq_api_key: str | None = None,
     ) -> ChatbotResponse:
         """Main chat entry point."""
         
@@ -31,7 +31,7 @@ class ChatLogic:
         router_output = await self.chat_router.route_query(
             user_message=req_data.message,
             chat_mode=req_data.mode,
-            openai_token=openai_token,
+            groq_api_key=groq_api_key,
             has_trace_context=bool(req_data.trace_id),
         )
         
@@ -45,7 +45,7 @@ class ChatLogic:
                 user_message=req_data.message,
                 model=req_data.model,
                 timestamp=req_data.time,
-                openai_token=openai_token,
+                groq_api_key=groq_api_key,
             )
         
         # ═══════════════════════════════════════════════════════════════════════
@@ -84,7 +84,7 @@ class ChatLogic:
                 model=req_data.model,
                 timestamp=req_data.time,
                 tree=tree,
-                openai_token=openai_token,
+                groq_api_key=groq_api_key,
             )
         # elif router_output.agent_type == "code":
         #     return await self.code_agent.chat(...)
@@ -96,5 +96,5 @@ class ChatLogic:
             user_message=req_data.message,
             model=req_data.model,
             timestamp=req_data.time,
-            openai_token=openai_token,
+            groq_api_key=groq_api_key,
         )

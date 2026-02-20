@@ -59,10 +59,14 @@ class IntelligencePipeline:
         )
         
         # Determine if fast path is available
+        # Pattern confidence alone is sufficient — the pattern matcher already
+        # validates match quality (e.g., N+1 needs 3+ similar queries).
+        # NOTE: We don't require ranked_causes.confidence == HIGH because
+        # the Ranker scores individual spans, but patterns like N+1 are
+        # aggregate issues where no single span scores high on its own.
         fast_path = (
             len(pattern_matches) > 0 and
-            pattern_matches[0].confidence > self.config.fast_path_threshold and
-            ranked_causes.confidence_level.value == "high"
+            pattern_matches[0].confidence > self.config.fast_path_threshold
         )
         
         processing_time = (time.time() - start_time) * 1000

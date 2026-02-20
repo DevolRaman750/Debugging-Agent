@@ -2,6 +2,8 @@ from datetime import datetime
 from openai import AsyncOpenAI
 from src.agents.base import BaseAgent
 from src.routing.types import ChatbotResponse, ChatModel, MessageType
+from src.config import GROQ_API_KEY, GROQ_BASE_URL, GROQ_MODEL
+
 GENERAL_SYSTEM_PROMPT = """You are TraceRoot, a helpful AI assistant.
 You can answer general questions about:
 - Software development and debugging concepts
@@ -9,11 +11,16 @@ You can answer general questions about:
 - Best practices for logging and tracing
 - General programming questions
 Be helpful, concise, and accurate."""
+
 class GeneralAgent(BaseAgent):
     """General purpose agent for non-trace queries."""
     
-    def __init__(self):
-        self.chat_client = AsyncOpenAI()
+    def __init__(self, groq_api_key: str = None):
+        api_key = groq_api_key or GROQ_API_KEY
+        if api_key:
+            self.chat_client = AsyncOpenAI(api_key=api_key, base_url=GROQ_BASE_URL)
+        else:
+            self.chat_client = None
         self.system_prompt = GENERAL_SYSTEM_PROMPT
     
     async def chat(
@@ -24,12 +31,23 @@ class GeneralAgent(BaseAgent):
         model: ChatModel,
         timestamp: datetime,
         chat_history: list[dict] | None = None,
-        openai_token: str | None = None,
+        groq_api_key: str | None = None,
         **kwargs
     ) -> ChatbotResponse:
         """Simple chat without trace context."""
         
-        client = AsyncOpenAI(api_key=openai_token) if openai_token else self.chat_client
+        if groq_api_key:
+            client = AsyncOpenAI(api_key=groq_api_key, base_url=GROQ_BASE_URL)
+        elif self.chat_client:
+            client = self.chat_client
+        else:
+            return ChatbotResponse(
+                time=datetime.now(),
+                message="Error: No LLM client configured.",
+                reference=[],
+                message_type=MessageType.ASSISTANT,
+                chat_id=chat_id,
+            )
         
         messages = [{"role": "system", "content": self.system_prompt}]
         
@@ -41,7 +59,7 @@ class GeneralAgent(BaseAgent):
         messages.append({"role": "user", "content": user_message})
         
         response = await client.chat.completions.create(
-            model=model.value,
+            model=GROQ_MODEL,
             messages=messages
         )
         

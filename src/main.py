@@ -2,11 +2,15 @@
 # Test script for Intelligence Layer - processes trace and outputs IntelligenceResult
 import asyncio
 import json
+from datetime import datetime
+
+from src.config import GROQ_API_KEY
 from src.service.provider import ObservabilityProvider
 from src.context.tree_builder import build_heterogeneous_tree
 from src.context.utils import find_root_span
-
-# Import Intelligence Layer
+from src.routing.types import ChatMode, ChatModel
+from src.routing.router import ChatRouter
+from src.agents.single_rca_agent import SingleRCAAgent
 from src.intel.pipeline import IntelligencePipeline
 
 
@@ -26,7 +30,7 @@ async def main():
     provider = ObservabilityProvider.create_jaeger_provider()
     
     # Replace with your trace_id from Jaeger UI
-    trace_id = "1c7121fca528e2363f3a664c8d796ff1"
+    trace_id = "aab7900d7a8d59d04eebed386ed6924e"
     
     print(f"Trace ID: {trace_id}")
     
@@ -79,6 +83,18 @@ async def main():
     print_section("5.1 Classification Results")
     print(f"Root span type: {intel_result.classified_tree.span_type.value}")
     print(f"Classification confidence: {intel_result.classified_tree.classification_confidence:.2f}")
+    
+    # Print all classified spans so you can verify different traces → different data
+    def print_classified_tree(node, indent=0):
+        prefix = "  " * indent
+        print(f"{prefix}[{node.span_type.value}] {node.func_full_name} "
+              f"({node.span_latency:.1f}ms, conf={node.classification_confidence:.2f}, "
+              f"logs={len(node.logs)})")
+        for child in node.children_spans:
+            print_classified_tree(child, indent + 1)
+    
+    print("\nFull span tree:")
+    print_classified_tree(intel_result.classified_tree)
     
     # 5.2 Suppression Stats
     print_section("5.2 Suppression Stats")
@@ -156,6 +172,80 @@ async def main():
     print(f"✅ Full result saved to: {output_file}")
     print("\nPreview (first 500 chars):")
     print(json.dumps(result_dict, indent=2, default=str)[:500] + "...")
+
+    # =========================================================================
+    # STEP 7: Test ChatRouter (Agent Routing)
+    # =========================================================================
+    print_section("STEP 7: Testing ChatRouter")
+    
+    router = ChatRouter(groq_api_key=GROQ_API_KEY)
+    
+    # Test 1: Should route to "single_rca" (has trace + asking about issue)
+    route_result = await router.route_query(
+        user_message="Why is this trace slow?",
+        chat_mode=ChatMode.AGENT,
+        has_trace_context=True,
+    )
+    print(f"  Query: 'Why is this trace slow?'")
+    print(f"  ✅ Routed to: {route_result.agent_type}")
+    print(f"     Reasoning: {route_result.reasoning}")
+    
+    # Test 2: Should route to "general" (no trace, general question)
+    route_result_2 = await router.route_query(
+        user_message="What is distributed tracing?",
+        chat_mode=ChatMode.CHAT,
+        has_trace_context=False,
+    )
+    print(f"\n  Query: 'What is distributed tracing?'")
+    print(f"  ✅ Routed to: {route_result_2.agent_type}")
+    print(f"     Reasoning: {route_result_2.reasoning}")
+    
+    # =========================================================================
+    # STEP 8: Test SingleRCAAgent (Full End-to-End)
+    # =========================================================================
+    print_section("STEP 8: Testing SingleRCAAgent (Full Pipeline)")
+    print("  This will: Intel Layer → Feature Select → Build Context → Groq LLM")
+    print("  Please wait...\n")
+    
+    rca_agent = SingleRCAAgent(groq_api_key=GROQ_API_KEY)
+    
+    rca_response = await rca_agent.chat(
+        trace_id=trace_id,
+        chat_id="test-chat-001",
+        user_message="Why is this trace slow?",
+        model=ChatModel.AUTO,
+        timestamp=datetime.now(),
+        tree=tree,
+        chat_history=None,
+    )
+    
+    print(f"  ✅ RCA Response received!")
+    print(f"  References: {len(rca_response.reference)} spans cited")
+    print(f"\n{'─' * 60}")
+    print(f"  RESPONSE:")
+    print(f"{'─' * 60}")
+    print(rca_response.message)
+    
+    # =========================================================================
+    # STEP 9: Test with Different Queries
+    # =========================================================================
+    print_section("STEP 9: Testing Different User Queries")
+    
+    test_queries = [
+        "Show me all error logs in this trace",
+        "What services are involved in this request?",
+        "Is there a retry pattern in this trace?",
+    ]
+    
+    for query in test_queries:
+        print(f"\n  Query: '{query}'")
+        
+        route = await router.route_query(
+            user_message=query,
+            chat_mode=ChatMode.AGENT,
+            has_trace_context=True,
+        )
+        print(f"  → Routed to: {route.agent_type} ({route.reasoning[:50]}...)")
 
 
 if __name__ == "__main__":

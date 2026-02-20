@@ -2,10 +2,10 @@ from typing import Literal
 from openai import AsyncOpenAI  # Same library — Groq is OpenAI-compatible
 from src.routing.types import ChatMode, RouterOutput
 from src.routing.prompts.router_prompts import ROUTER_SYSTEM_PROMPT
+from src.config import GROQ_API_KEY, GROQ_BASE_URL, GROQ_MODEL
 
 
-GROQ_BASE_URL = "https://api.groq.com/openai/v1"
-GROQ_DEFAULT_MODEL = "llama-3.3-70b-versatile"
+GROQ_DEFAULT_MODEL = GROQ_MODEL
 
 
 class ChatRouter:
@@ -19,11 +19,12 @@ class ChatRouter:
             client: Pre-configured AsyncOpenAI client (pointed at Groq)
             groq_api_key: Groq API key (free from console.groq.com)
         """
+        api_key = groq_api_key or GROQ_API_KEY
         if client:
             self.client = client
-        elif groq_api_key:
+        elif api_key:
             self.client = AsyncOpenAI(
-                api_key=groq_api_key,
+                api_key=api_key,
                 base_url=GROQ_BASE_URL
             )
         else:

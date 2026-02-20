@@ -12,12 +12,7 @@ ADAPTED FOR GROQ: Uses tool-calling instead of OpenAI's responses.parse() API.
 import json
 from openai import AsyncOpenAI
 from src.agents.types import LogFeature, SpanFeature
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# GROQ CONFIG
-# ═══════════════════════════════════════════════════════════════════════════════
-GROQ_BASE_URL = "https://api.groq.com/openai/v1"
-GROQ_MODEL = "llama-3.3-70b-versatile"
+from src.config import GROQ_BASE_URL, GROQ_MODEL
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

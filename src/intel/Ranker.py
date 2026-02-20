@@ -85,6 +85,55 @@ def rank_causes(
             evidence=evidence,
         ))
     
+    # Also include pattern-matched spans that aren't already failure spans.
+    # This ensures patterns like N+1 queries (no errors, just anti-patterns)
+    # still produce ranked candidates for the fast path response.
+    already_added = {c.span_id for c in candidates}
+    
+    for pm in pattern_matches:
+        for matched_span_id in pm.matched_spans:
+            if matched_span_id in already_added or matched_span_id not in span_lookup:
+                continue
+            
+            span, depth = span_lookup[matched_span_id]
+            
+            error_density = calculate_error_density(span)
+            latency_anomaly = calculate_latency_anomaly(span)
+            depth_score = min(1.0, depth / 5.0)
+            pattern_score = pm.confidence
+            
+            score = (
+                error_density * config.error_density_weight +
+                latency_anomaly * config.latency_anomaly_weight +
+                depth_score * config.depth_weight +
+                pattern_score * config.pattern_match_weight
+            )
+            
+            factors = [
+                ScoringFactor(factor_name="error_density", factor_value=error_density,
+                             weighted_contribution=error_density * config.error_density_weight),
+                ScoringFactor(factor_name="latency_anomaly", factor_value=latency_anomaly,
+                             weighted_contribution=latency_anomaly * config.latency_anomaly_weight),
+                ScoringFactor(factor_name="depth", factor_value=depth_score,
+                             weighted_contribution=depth_score * config.depth_weight),
+                ScoringFactor(factor_name="pattern_match", factor_value=pattern_score,
+                             weighted_contribution=pattern_score * config.pattern_match_weight),
+            ]
+            
+            candidates.append(RankedCause(
+                span_id=matched_span_id,
+                span_function=span.func_full_name,
+                score=score,
+                rank=0,
+                contributing_factors=factors,
+                evidence=[Evidence(
+                    span_id=matched_span_id,
+                    evidence_type="pattern_match",
+                    description=f"Matched pattern: {pm.pattern_name}",
+                )],
+            ))
+            already_added.add(matched_span_id)
+    
     # Sort by score and assign ranks
     candidates.sort(key=lambda c: c.score, reverse=True)
     for i, c in enumerate(candidates):

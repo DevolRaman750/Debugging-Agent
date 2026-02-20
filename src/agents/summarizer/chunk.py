@@ -23,12 +23,7 @@ ADAPTED FOR GROQ: Uses tool-calling instead of OpenAI's responses.parse()
 import json
 from openai import AsyncOpenAI
 from src.agents.types import ChatOutput, Reference
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# GROQ CONFIG
-# ═══════════════════════════════════════════════════════════════════════════════
-GROQ_BASE_URL = "https://api.groq.com/openai/v1"
-GROQ_MODEL = "llama-3.3-70b-versatile"
+from src.config import GROQ_API_KEY, GROQ_BASE_URL, GROQ_MODEL
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -128,9 +123,10 @@ async def chunk_summarize(
     """
     # Create client if not provided
     if client is None:
-        if groq_api_key is None:
+        api_key = groq_api_key or GROQ_API_KEY
+        if not api_key:
             raise ValueError("Either client or groq_api_key must be provided")
-        client = AsyncOpenAI(api_key=groq_api_key, base_url=GROQ_BASE_URL)
+        client = AsyncOpenAI(api_key=api_key, base_url=GROQ_BASE_URL)
     
     # ═══════════════════════════════════════════════════════════════════════
     # STEP 1: Format the chunk answers and references
