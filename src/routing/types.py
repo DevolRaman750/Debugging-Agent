@@ -81,6 +81,12 @@ class ChatbotResponse(BaseModel):
     message_type:MessageType = MessageType.ASSISTANT
     chat_id:str
     action: Optional[dict] = None
+
+    # Evidence synthesis fields (populated by synthesizer.py)
+    validation_passed: Optional[bool] = None
+    validation_confidence: Optional[float] = None
+    validation_notes: list[str] = []
+    fallback_used: bool = False
     
 
 

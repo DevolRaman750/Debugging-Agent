@@ -246,6 +246,15 @@ async def main():
         preview = response.message[:200].replace('\n', ' ')
         print(f"     Time: {elapsed_ms:.0f}ms  |  Refs: {len(response.reference)} spans")
         print(f"     Response: {preview}...")
+
+        # Show validation results from synthesizer
+        if response.validation_passed is not None:
+            v_icon = "✅" if response.validation_passed else "⚠️"
+            fb_icon = " [FALLBACK]" if response.fallback_used else ""
+            print(f"     Validation: {v_icon} passed={response.validation_passed}, "
+                  f"confidence={response.validation_confidence:.2f}{fb_icon}")
+            for note in response.validation_notes:
+                print(f"       {note}")
         print()
 
         rca_results.append({
@@ -255,16 +264,21 @@ async def main():
             "refs": len(response.reference),
             "response_preview": response.message[:80],
             "full_response": response.message,
+            "validation_passed": response.validation_passed,
+            "validation_confidence": response.validation_confidence,
+            "fallback_used": response.fallback_used,
         })
 
     # Step 6: Final Summary
     print_section("FINAL SUMMARY — SingleRCAAgent Results")
-    print(f"  {'#':<3} {'Root Operation':<35} {'Path':>6} {'Time':>8} {'Refs':>4}  Response Preview")
-    print(f"  {'─'*3} {'─'*35} {'─'*6} {'─'*8} {'─'*4}  {'─'*40}")
+    print(f"  {'#':<3} {'Root Operation':<30} {'Path':>6} {'Time':>8} {'Refs':>4} {'Valid':>5} {'Conf':>5}  {'FB':>3}")
+    print(f"  {'─'*3} {'─'*30} {'─'*6} {'─'*8} {'─'*4} {'─'*5} {'─'*5}  {'─'*3}")
     for i, r in enumerate(rca_results, 1):
         path = "⚡FAST" if r["fast_path"] else "🤖LLM"
-        preview = r["response_preview"].replace('\n', ' ')[:40]
-        print(f"  {i:<3} {r['root_op']:<35} {path:>6} {r['elapsed_ms']:>7.0f}ms {r['refs']:>4}  {preview}...")
+        v = "✅" if r["validation_passed"] else "⚠️" if r["validation_passed"] is not None else "?"
+        conf = f"{r['validation_confidence']:.2f}" if r["validation_confidence"] is not None else "  -"
+        fb = "YES" if r["fallback_used"] else " no"
+        print(f"  {i:<3} {r['root_op']:<30} {path:>6} {r['elapsed_ms']:>7.0f}ms {r['refs']:>4} {v:>5} {conf:>5}  {fb:>3}")
 
     # Check that responses are unique (Bug 1 verification)
     unique_responses = set(r["full_response"] for r in rca_results)

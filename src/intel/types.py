@@ -182,13 +182,24 @@ class IntelligenceConfig(BaseModel):
     fast_path_threshold: float = 0.8
 
 
+class ValidationIssue(BaseModel):
+    """A single validation issue found."""
+    issue_type: str           # "invalid_ref", "unsupported_claim", "inconsistency"
+    severity: str             # "error", "warning", "info"
+    description: str          # Human-readable description
+    span_id: str | None = None  # Related span if applicable
+    original_text: str | None = None  # The problematic text from the answer
 
-        
 
-
-
-
-    
+class ValidatedResponse(BaseModel):
+    """Output from evidence synthesis — the final validated response."""
+    answer: str                          # Possibly modified answer
+    references: list                     # Validated references (invalid ones removed)
+    confidence: float                    # 0.0-1.0 overall confidence
+    validation_passed: bool              # True if no critical issues
+    issues: list[ValidationIssue]        # All issues found
+    validation_notes: list[str]          # Human-readable summary notes
+    fallback_used: bool = False          # True if fell back to pattern explanation
 
 
 

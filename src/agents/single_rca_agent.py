@@ -21,8 +21,9 @@ from src.context.model import SpanNode
 from src.agents.filter.feature import log_feature_selector, span_feature_selector
 from src.agents.chunk.sequential import get_trace_context_messages
 from src.agents.summarizer.chunk import chunk_summarize
-from src.agents.types import LogFeature, SpanFeature
+from src.agents.types import LogFeature, SpanFeature, ChatOutput
 from src.intel.pipeline import IntelligencePipeline
+from src.intel.synthesizer import validate_response
 from src.config import GROQ_API_KEY, GROQ_BASE_URL, GROQ_MODEL
 
 
@@ -125,6 +126,10 @@ class SingleRCAAgent(BaseAgent):
                 reference=self._build_references(intel_result),
                 message_type=MessageType.ASSISTANT,
                 chat_id=chat_id,
+                validation_passed=True,
+                validation_confidence=1.0,
+                validation_notes=["✅ Fast path — pattern-based response, no LLM validation needed."],
+                fallback_used=False,
             )
 
         # ═══════════════════════════════════════════════════════════════════════
@@ -194,12 +199,43 @@ class SingleRCAAgent(BaseAgent):
             )
             final_response = summary.answer
 
+        # ═══════════════════════════════════════════════════════════════════════
+        # STEP 8: Evidence Synthesis & Validation
+        #
+        # Validates the LLM's answer against actual trace data.
+        # Catches hallucinations: invalid span refs, unsupported claims,
+        # inconsistencies with Intelligence Layer findings.
+        #
+        # Three outcomes:
+        #   PASS     → answer returned as-is
+        #   CAVEAT   → warning notes appended to answer
+        #   FALLBACK → answer replaced with pattern-based explanation
+        # ═══════════════════════════════════════════════════════════════════════
+        raw_refs = self._build_references(intel_result)
+        chat_output = ChatOutput(
+            answer=final_response,
+            reference=[r.model_dump() for r in raw_refs],
+        )
+
+        validated = validate_response(
+            chat_output=chat_output,
+            intel_result=intel_result,
+            tree=intel_result.classified_tree,
+        )
+
         return ChatbotResponse(
             time=datetime.now(),
-            message=final_response,
-            reference=self._build_references(intel_result),
+            message=validated.answer,
+            reference=[
+                r.model_dump() if hasattr(r, "model_dump") else r
+                for r in validated.references
+            ],
             message_type=MessageType.ASSISTANT,
             chat_id=chat_id,
+            validation_passed=validated.validation_passed,
+            validation_confidence=validated.confidence,
+            validation_notes=validated.validation_notes,
+            fallback_used=validated.fallback_used,
         )
 
     # ═══════════════════════════════════════════════════════════════════════════
