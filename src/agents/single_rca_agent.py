@@ -26,6 +26,11 @@ from src.agents.summarizer.chunk import chunk_summarize
 from src.agents.types import LogFeature, SpanFeature, ChatOutput
 from src.intel.pipeline import IntelligencePipeline
 from src.intel.synthesizer import validate_response
+from src.routing.response_builder import (
+    build_response,
+    response_to_chat_record,
+    intel_to_metrics_record,
+)
 from src.config import GROQ_API_KEY, GROQ_BASE_URL, GROQ_MODEL
 
 
@@ -125,17 +130,14 @@ class SingleRCAAgent(BaseAgent):
                 user_message=user_message,
             )
 
-            fast_response = ChatbotResponse(
-                time=datetime.now(),
-                message=response_message,
-                reference=self._build_references(intel_result),
-                message_type=MessageType.ASSISTANT,
+            fast_response = ChatbotResponse(**build_response(
                 chat_id=chat_id,
-                validation_passed=True,
-                validation_confidence=1.0,
-                validation_notes=["✅ Fast path — pattern-based response, no LLM validation needed."],
-                fallback_used=False,
-            )
+                answer=response_message,
+                references=self._build_references(intel_result),
+                intel_result=intel_result,
+                validated=None,
+                fast_path_used=True,
+            ))
 
             # ── Persist (fast path) ──
             if db_client:
@@ -243,20 +245,14 @@ class SingleRCAAgent(BaseAgent):
             tree=intel_result.classified_tree,
         )
 
-        llm_response = ChatbotResponse(
-            time=datetime.now(),
-            message=validated.answer,
-            reference=[
-                r.model_dump() if hasattr(r, "model_dump") else r
-                for r in validated.references
-            ],
-            message_type=MessageType.ASSISTANT,
+        llm_response = ChatbotResponse(**build_response(
             chat_id=chat_id,
-            validation_passed=validated.validation_passed,
-            validation_confidence=validated.confidence,
-            validation_notes=validated.validation_notes,
-            fallback_used=validated.fallback_used,
-        )
+            answer=validated.answer,
+            references=validated.references,
+            intel_result=intel_result,
+            validated=validated,
+            fast_path_used=False,
+        ))
 
         # ═══════════════════════════════════════════════════════════════════════
         # STEP 9: Persist to Database
@@ -296,6 +292,7 @@ class SingleRCAAgent(BaseAgent):
         """Persist chat record, chat metadata, and intelligence metrics.
 
         Called after both fast-path and LLM-path responses.
+        Uses centralised helpers from response_builder.py.
         Failures are logged but never crash the response.
         """
         now_iso = datetime.now(timezone.utc).isoformat()
@@ -313,25 +310,15 @@ class SingleRCAAgent(BaseAgent):
                 "status": "SUCCESS",
             })
 
-            # ── 2. Assistant message record ──
-            ref_dicts = [
-                r.model_dump() if hasattr(r, "model_dump") else r
-                for r in response.reference
-            ]
-            await db_client.insert_chat_record({
-                "chat_id": chat_id,
-                "timestamp": response.time.isoformat(),
-                "role": "assistant",
-                "content": response.message,
-                "user_content": user_message,
-                "trace_id": trace_id,
-                "model": GROQ_MODEL,
-                "mode": "AGENT",
-                "message_type": "assistant",
-                "action_type": "AGENT_CHAT",
-                "status": "SUCCESS",
-                "reference": ref_dicts,
-            })
+            # ── 2. Assistant message record (via response_to_chat_record) ──
+            assistant_record = response_to_chat_record(
+                response=response,
+                trace_id=trace_id,
+                user_message=user_message,
+                model=GROQ_MODEL,
+                mode="AGENT",
+            )
+            await db_client.insert_chat_record(assistant_record)
 
             # ── 3. Chat metadata (upsert) ──
             title = f"RCA: {user_message[:50]}"
@@ -342,59 +329,16 @@ class SingleRCAAgent(BaseAgent):
                 "trace_id": trace_id,
             })
 
-            # ── 4. Intelligence metrics ──
-            pattern_dicts = [
-                {
-                    "name": pm.pattern_name,
-                    "confidence": pm.confidence,
-                    "category": pm.pattern_category,
-                    "explanation": pm.explanation[:200],
-                    "matched_spans": len(pm.matched_spans),
-                }
-                for pm in intel_result.pattern_matches
-            ]
-            cause_dicts = [
-                {
-                    "span_function": c.span_function,
-                    "score": c.score,
-                    "rank": c.rank,
-                    "span_id": c.span_id,
-                }
-                for c in intel_result.ranked_causes.causes[:5]
-            ]
-            validation_dict = None
-            if validated:
-                validation_dict = {
-                    "passed": validated.validation_passed,
-                    "confidence": validated.confidence,
-                    "issues": len(validated.validation_notes),
-                    "fallback_used": validated.fallback_used,
-                }
-            elif response.validation_passed is not None:
-                # Fast path — validation info is on the response itself
-                validation_dict = {
-                    "passed": response.validation_passed,
-                    "confidence": response.validation_confidence,
-                    "issues": 0,
-                    "fallback_used": response.fallback_used,
-                }
-
-            compression_ratio = None
-            if intel_result.compressed_context:
-                compression_ratio = intel_result.compressed_context.compression_ratio
-
-            await db_client.insert_intelligence_metrics({
-                "trace_id": trace_id,
-                "chat_id": chat_id,
-                "timestamp": now_iso,
-                "pattern_matches": pattern_dicts,
-                "ranked_causes": cause_dicts,
-                "fast_path_used": intel_result.fast_path_available,
-                "compression_ratio": compression_ratio,
-                "processing_time_ms": pipeline_ms,
-                "validation_result": validation_dict,
-                "user_feedback": None,
-            })
+            # ── 4. Intelligence metrics (via intel_to_metrics_record) ──
+            metrics_record = intel_to_metrics_record(
+                intel_result=intel_result,
+                validated=validated,
+                chat_id=chat_id,
+                trace_id=trace_id,
+                pipeline_ms=pipeline_ms,
+                response=response,
+            )
+            await db_client.insert_intelligence_metrics(metrics_record)
 
         except Exception as e:
             # Never crash the response because of a DB write failure
@@ -690,6 +634,7 @@ class SingleRCAAgent(BaseAgent):
             refs.append(Reference(
                 type="span",
                 span_id=cause.span_id,
+                span_function_name=cause.span_function,
             ))
 
         # Add pattern-matched spans

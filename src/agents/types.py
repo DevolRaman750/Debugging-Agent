@@ -53,7 +53,9 @@ class FeatureOps(Enum):
 class Reference(BaseModel):
     """Reference to evidence in the trace."""
     type: str = Field(description="Type: 'span', 'log', or 'code'")
+    number: int | None = Field(default=None, description="Reference number [1], [2], etc.")
     span_id: str | None = Field(default=None, description="Span ID if type is 'span'")
+    span_function_name: str | None = Field(default=None, description="Span function/operation name")
     log_message: str | None = Field(default=None, description="Log message if type is 'log'")
     line_number: int | None = Field(default=None, description="Line number if type is 'code'")
     url: str | None = Field(default=None, description="URL if applicable")
