@@ -12,6 +12,7 @@ from src.routing.types import ChatMode, ChatModel
 from src.routing.router import ChatRouter
 from src.agents.single_rca_agent import SingleRCAAgent
 from src.intel.pipeline import IntelligencePipeline
+from src.dao.factory import create_dao
 
 
 def print_section(title: str, width: int = 60):
@@ -207,6 +208,7 @@ async def main():
     print("  This will: Intel Layer → Feature Select → Build Context → Groq LLM")
     print("  Please wait...\n")
     
+    db_client = create_dao()
     rca_agent = SingleRCAAgent(groq_api_key=GROQ_API_KEY)
     
     rca_response = await rca_agent.chat(
@@ -217,6 +219,7 @@ async def main():
         timestamp=datetime.now(),
         tree=tree,
         chat_history=None,
+        db_client=db_client,
     )
     
     print(f"  ✅ RCA Response received!")

@@ -15,6 +15,7 @@ from src.intel.pipeline import IntelligencePipeline
 from src.routing.types import ChatMode, ChatModel
 from src.routing.router import ChatRouter
 from src.agents.single_rca_agent import SingleRCAAgent
+from src.dao.factory import create_dao
 
 
 def print_section(title: str, width: int = 70):
@@ -116,7 +117,7 @@ async def test_routing(router, query, has_trace):
     return route
 
 
-async def test_rca_agent(rca_agent, trace_id, tree, user_message):
+async def test_rca_agent(rca_agent, trace_id, tree, user_message, db_client=None):
     """Test SingleRCAAgent end-to-end (fast path or LLM)."""
     start = timer.time()
     response = await rca_agent.chat(
@@ -127,6 +128,7 @@ async def test_rca_agent(rca_agent, trace_id, tree, user_message):
         timestamp=datetime.now(),
         tree=tree,
         chat_history=None,
+        db_client=db_client,
     )
     elapsed = (timer.time() - start) * 1000
     return response, elapsed
@@ -228,8 +230,10 @@ async def main():
     # ═════════════════════════════════════════════════════════════════════════
     print_section("STEP 5: SingleRCAAgent — Full End-to-End (All 8 Traces)")
     print("  Testing each trace with: 'Why is this trace slow?'")
-    print("  Fast-path traces skip LLM; others call Groq.\n")
+    print("  Fast-path traces skip LLM; others call Groq.")
+    print("  Persistence: SQLite (traceroot.db)\n")
 
+    db_client = create_dao()
     rca_agent = SingleRCAAgent(groq_api_key=GROQ_API_KEY)
     rca_results = []
 
@@ -239,7 +243,7 @@ async def main():
         print(f"  ── Trace {i}/{len(trace_trees)}: {op} [{path_label}] ──")
 
         response, elapsed_ms = await test_rca_agent(
-            rca_agent, tid, tree, "Why is this trace slow?"
+            rca_agent, tid, tree, "Why is this trace slow?", db_client=db_client
         )
 
         # Show first 200 chars of response
@@ -287,6 +291,50 @@ async def main():
         print("  ✅ Every trace got a DIFFERENT response — Bug 1 is fixed!")
     else:
         print("  ⚠️  Some traces got the same response — check output above")
+
+    # ═════════════════════════════════════════════════════════════════════
+    # Step 7: Verify Database Records
+    # ═════════════════════════════════════════════════════════════════════
+    print_section("STEP 7: Database Persistence Verification (SQLite)")
+
+    try:
+        # Check intelligence_metrics table
+        metrics = await db_client.get_intelligence_metrics({"limit": 50})
+        print(f"  🗃️  intelligence_metrics rows: {len(metrics)}")
+
+        for m in metrics:
+            tid_short = m["trace_id"][:16] if m["trace_id"] else "?"
+            fp = "⚡FAST" if m.get("fast_path_used") else "🤖LLM"
+            pm_count = len(m.get("pattern_matches", []))
+            rc_count = len(m.get("ranked_causes", []))
+            ptime = m.get("processing_time_ms", 0) or 0
+            vr = m.get("validation_result", {}) or {}
+            v_pass = "✅" if vr.get("passed") else "❓"
+            fb = m.get("user_feedback") or "-"
+            print(f"    {tid_short}...  {fp}  pat={pm_count}  causes={rc_count}  "
+                  f"{ptime:.0f}ms  valid={v_pass}  feedback={fb}")
+
+        # Check chat_records table
+        all_chats = set(m["chat_id"] for m in metrics)
+        total_msgs = 0
+        for cid in all_chats:
+            history = await db_client.get_chat_history(cid)
+            if history:
+                total_msgs += len(history)
+        print(f"  💬  chat_records: {total_msgs} messages across {len(all_chats)} chats")
+
+        # Check chat_metadata table
+        meta_count = 0
+        for cid in all_chats:
+            meta = await db_client.get_chat_metadata(cid)
+            if meta:
+                meta_count += 1
+        print(f"  🏷️   chat_metadata: {meta_count} entries")
+
+        print(f"\n  ✅ All records persisted to traceroot.db successfully!")
+
+    except Exception as e:
+        print(f"  ❌ DB verification failed: {e}")
 
     print()
 

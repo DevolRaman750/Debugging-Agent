@@ -12,7 +12,9 @@ TWO PATHS:
 
 import asyncio
 import json
-from datetime import datetime
+import time as _timer
+from datetime import datetime, timezone
+from typing import Any
 from openai import AsyncOpenAI
 
 from src.agents.base import BaseAgent
@@ -82,6 +84,7 @@ class SingleRCAAgent(BaseAgent):
         tree: SpanNode,
         chat_history: list[dict] | None = None,
         groq_api_key: str | None = None,
+        db_client=None,
         **kwargs
     ) -> ChatbotResponse:
         """Main chat entrypoint for RCA."""
@@ -103,10 +106,12 @@ class SingleRCAAgent(BaseAgent):
         # ═══════════════════════════════════════════════════════════════════════
         # STEP 1: Run Intelligence Pipeline
         # ═══════════════════════════════════════════════════════════════════════
+        _t0 = _timer.perf_counter()
         intel_result = await self.intel_pipeline.process(
             tree=tree,
             user_query=user_message
         )
+        _pipeline_ms = (_timer.perf_counter() - _t0) * 1000
 
         # ═══════════════════════════════════════════════════════════════════════
         # STEP 2: Check Fast Path
@@ -120,7 +125,7 @@ class SingleRCAAgent(BaseAgent):
                 user_message=user_message,
             )
 
-            return ChatbotResponse(
+            fast_response = ChatbotResponse(
                 time=datetime.now(),
                 message=response_message,
                 reference=self._build_references(intel_result),
@@ -131,6 +136,21 @@ class SingleRCAAgent(BaseAgent):
                 validation_notes=["✅ Fast path — pattern-based response, no LLM validation needed."],
                 fallback_used=False,
             )
+
+            # ── Persist (fast path) ──
+            if db_client:
+                await self._persist(
+                    db_client=db_client,
+                    trace_id=trace_id,
+                    chat_id=chat_id,
+                    user_message=user_message,
+                    response=fast_response,
+                    intel_result=intel_result,
+                    pipeline_ms=_pipeline_ms,
+                    validated=None,
+                )
+
+            return fast_response
 
         # ═══════════════════════════════════════════════════════════════════════
         # STEP 3: Feature Selection (asks LLM which fields matter)
@@ -223,7 +243,7 @@ class SingleRCAAgent(BaseAgent):
             tree=intel_result.classified_tree,
         )
 
-        return ChatbotResponse(
+        llm_response = ChatbotResponse(
             time=datetime.now(),
             message=validated.answer,
             reference=[
@@ -237,6 +257,148 @@ class SingleRCAAgent(BaseAgent):
             validation_notes=validated.validation_notes,
             fallback_used=validated.fallback_used,
         )
+
+        # ═══════════════════════════════════════════════════════════════════════
+        # STEP 9: Persist to Database
+        #
+        # Stores chat record, chat metadata, and intelligence metrics.
+        # Runs only when a db_client is provided (None in unit tests).
+        # ═══════════════════════════════════════════════════════════════════════
+        if db_client:
+            await self._persist(
+                db_client=db_client,
+                trace_id=trace_id,
+                chat_id=chat_id,
+                user_message=user_message,
+                response=llm_response,
+                intel_result=intel_result,
+                pipeline_ms=_pipeline_ms,
+                validated=validated,
+            )
+
+        return llm_response
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # PERSISTENCE — Writes records to the database (SQLite or MongoDB)
+    # ═══════════════════════════════════════════════════════════════════════════
+
+    async def _persist(
+        self,
+        db_client,
+        trace_id: str,
+        chat_id: str,
+        user_message: str,
+        response: ChatbotResponse,
+        intel_result,
+        pipeline_ms: float,
+        validated=None,
+    ):
+        """Persist chat record, chat metadata, and intelligence metrics.
+
+        Called after both fast-path and LLM-path responses.
+        Failures are logged but never crash the response.
+        """
+        now_iso = datetime.now(timezone.utc).isoformat()
+
+        try:
+            # ── 1. User message record ──
+            await db_client.insert_chat_record({
+                "chat_id": chat_id,
+                "timestamp": now_iso,
+                "role": "user",
+                "content": user_message,
+                "trace_id": trace_id,
+                "message_type": "user",
+                "action_type": "AGENT_CHAT",
+                "status": "SUCCESS",
+            })
+
+            # ── 2. Assistant message record ──
+            ref_dicts = [
+                r.model_dump() if hasattr(r, "model_dump") else r
+                for r in response.reference
+            ]
+            await db_client.insert_chat_record({
+                "chat_id": chat_id,
+                "timestamp": response.time.isoformat(),
+                "role": "assistant",
+                "content": response.message,
+                "user_content": user_message,
+                "trace_id": trace_id,
+                "model": GROQ_MODEL,
+                "mode": "AGENT",
+                "message_type": "assistant",
+                "action_type": "AGENT_CHAT",
+                "status": "SUCCESS",
+                "reference": ref_dicts,
+            })
+
+            # ── 3. Chat metadata (upsert) ──
+            title = f"RCA: {user_message[:50]}"
+            await db_client.insert_chat_metadata({
+                "chat_id": chat_id,
+                "timestamp": now_iso,
+                "chat_title": title,
+                "trace_id": trace_id,
+            })
+
+            # ── 4. Intelligence metrics ──
+            pattern_dicts = [
+                {
+                    "name": pm.pattern_name,
+                    "confidence": pm.confidence,
+                    "category": pm.pattern_category,
+                    "explanation": pm.explanation[:200],
+                    "matched_spans": len(pm.matched_spans),
+                }
+                for pm in intel_result.pattern_matches
+            ]
+            cause_dicts = [
+                {
+                    "span_function": c.span_function,
+                    "score": c.score,
+                    "rank": c.rank,
+                    "span_id": c.span_id,
+                }
+                for c in intel_result.ranked_causes.causes[:5]
+            ]
+            validation_dict = None
+            if validated:
+                validation_dict = {
+                    "passed": validated.validation_passed,
+                    "confidence": validated.confidence,
+                    "issues": len(validated.validation_notes),
+                    "fallback_used": validated.fallback_used,
+                }
+            elif response.validation_passed is not None:
+                # Fast path — validation info is on the response itself
+                validation_dict = {
+                    "passed": response.validation_passed,
+                    "confidence": response.validation_confidence,
+                    "issues": 0,
+                    "fallback_used": response.fallback_used,
+                }
+
+            compression_ratio = None
+            if intel_result.compressed_context:
+                compression_ratio = intel_result.compressed_context.compression_ratio
+
+            await db_client.insert_intelligence_metrics({
+                "trace_id": trace_id,
+                "chat_id": chat_id,
+                "timestamp": now_iso,
+                "pattern_matches": pattern_dicts,
+                "ranked_causes": cause_dicts,
+                "fast_path_used": intel_result.fast_path_available,
+                "compression_ratio": compression_ratio,
+                "processing_time_ms": pipeline_ms,
+                "validation_result": validation_dict,
+                "user_feedback": None,
+            })
+
+        except Exception as e:
+            # Never crash the response because of a DB write failure
+            print(f"  ⚠️  DB persist error (non-fatal): {e}")
 
     # ═══════════════════════════════════════════════════════════════════════════
     # CONTEXT BUILDING — Converts Intelligence Layer output into LLM-ready text

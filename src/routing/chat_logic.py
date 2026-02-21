@@ -85,6 +85,7 @@ class ChatLogic:
                 timestamp=req_data.time,
                 tree=tree,
                 groq_api_key=groq_api_key,
+                db_client=self.db_client,
             )
         # elif router_output.agent_type == "code":
         #     return await self.code_agent.chat(...)
