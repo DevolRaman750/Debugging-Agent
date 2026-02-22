@@ -1,6 +1,7 @@
 import time
 from src.intel.types import (
-    IntelligenceResult, IntelligenceConfig, ClassifiedSpanNode
+    IntelligenceResult, IntelligenceConfig, ClassifiedSpanNode,
+    RankingConfig,
 )
 from src.intel.Classifier import classify_spans
 from src.intel.supressor import suppress_noise
@@ -8,13 +9,53 @@ from src.intel.locator import locate_failures
 from src.intel.matcher import match_patterns
 from src.intel.Ranker import rank_causes
 from src.intel.compressor import compress_context
+from src.intel.eval_config import EvalConfig, load_config
+from src.config import EVAL_CONFIG_PATH
 from src.context.model import SpanNode
 
+
+def _build_intel_config(eval_cfg: EvalConfig) -> IntelligenceConfig:
+    """Merge EvalConfig feedback-adjusted values into IntelligenceConfig.
+
+    Maps eval_config.ranking_weights → RankingConfig used by ranker.py,
+    and eval_config.fast_path_threshold → IntelligenceConfig.fast_path_threshold.
+    """
+    w = eval_cfg.ranking_weights
+    ranking = RankingConfig(
+        error_density_weight=w.error_density,
+        latency_anomaly_weight=w.latency,
+        pattern_match_weight=w.pattern_match,
+        depth_weight=w.structural,
+        temporal_correlation_weight=w.temporal,
+        # span_type_weight stays at default — not tuned by evaluator
+    )
+    return IntelligenceConfig(
+        ranking=ranking,
+        fast_path_threshold=eval_cfg.fast_path_threshold,
+    )
+
+
 class IntelligencePipeline:
-    """Main orchestrator for the intelligence layer."""
-    
+    """Main orchestrator for the intelligence layer.
+
+    On init, loads eval_config.json (written by the Evaluator) and merges
+    its feedback-adjusted weights/thresholds into IntelligenceConfig.
+    This means:
+      - ranker.py  sees adjusted ranking_weights
+      - matcher.py sees pattern_confidence_overrides
+      - fast-path  uses the adjusted threshold
+    """
+
     def __init__(self, config: IntelligenceConfig = None):
-        self.config = config or IntelligenceConfig()
+        # Load evaluation config (feedback loop)
+        self.eval_config: EvalConfig = load_config(EVAL_CONFIG_PATH)
+
+        # If caller supplied an explicit config, use it;
+        # otherwise build one from eval_config.
+        if config is not None:
+            self.config = config
+        else:
+            self.config = _build_intel_config(self.eval_config)
     
     async def process(
         self,
@@ -40,7 +81,8 @@ class IntelligencePipeline:
         pattern_matches = match_patterns(
             pruned_tree,
             failure_report,
-            user_query
+            user_query,
+            pattern_confidence_overrides=self.eval_config.pattern_confidence_overrides,
         )
         
         # Step 5: Cause Ranking

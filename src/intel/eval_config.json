@@ -1,0 +1,20 @@
+{
+  "ranking_weights": {
+    "latency": 0.3,
+    "error_density": 0.25,
+    "pattern_match": 0.2,
+    "structural": 0.15,
+    "temporal": 0.1
+  },
+  "pattern_confidence_overrides": {},
+  "fast_path_threshold": 0.85,
+  "min_samples_for_adjustment": 5,
+  "accuracy_thresholds": {
+    "healthy": 0.8,
+    "degraded": 0.6,
+    "critical": 0.4,
+    "disabled": 0.2
+  },
+  "last_evaluation": null,
+  "version": 1
+}
