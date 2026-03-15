@@ -22,7 +22,7 @@ WHAT IT DOES NOT DO
 HOW TO RUN
   One-shot (manual or cron):
     python -m src.intel.evaluator
-
+`
   Scheduled loop (production — uses EVAL_SCHEDULE_SECONDS from config):
     python -m src.intel.evaluator --loop
 

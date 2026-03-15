@@ -1,0 +1,848 @@
+# TraceRoot UI — Full Implementation Plan (From Scratch)
+
+> **Goal**: Build the complete Next.js frontend for TraceRoot, fully compatible with the existing Python backend (Stages 1-9 of the KAN pipeline), including pattern matching display, feedback collection, intelligence metadata surfacing, and all telemetry flows.
+
+---
+
+## Architecture Summary
+
+```
+YOUR NEW UI (Next.js 14 App Router)
+├── BFF Proxy Layer (api/ routes)         ← Proxies 9 endpoints to Python backend
+├── Direct MongoDB Layer (api/ routes)    ← 6 endpoints skip Python backend
+├── Pages                                  ← 4 authenticated pages + auth pages
+├── Components                             ← ~25 core components
+└── State Management                       ← React Context + URL params
+         │
+         ▼
+Python FastAPI Backend (already built)
+├── TelemetryRouter  → Jaeger/AWS/Tencent
+├── ChatRouterClass  → KAN Pipeline → LLM → GitHub API
+└── InternalRouter   → OTLP usage tracking
+```
+
+---
+
+## Implementation Phases
+
+| Phase | What You Build | Depends On | Estimated Effort |
+|-------|----------------|------------|-----------------|
+| **Phase 1** | Project setup + design system + layout shell | Nothing | 1-2 days |
+| **Phase 2** | Auth (Clerk) + sidebar navigation | Phase 1 | 1 day |
+| **Phase 3** | Settings page (provider config) | Phase 2 | 1-2 days |
+| **Phase 4** | Integrate page (token management) | Phase 2 | 1 day |
+| **Phase 5** | Trace list panel (left panel) | Phase 3 (needs provider config) | 2-3 days |
+| **Phase 6** | Log view panel (right panel) | Phase 5 | 1-2 days |
+| **Phase 7** | Trace waterfall view | Phase 5 | 1-2 days |
+| **Phase 8** | Agent chat panel (core) | Phase 5 + Phase 6 | 3-4 days |
+| **Phase 9** | Chat history + metadata + reasoning | Phase 8 | 1-2 days |
+| **Phase 10** | GitHub action flow | Phase 8 | 1 day |
+| **Phase 11** | Intelligence metadata + feedback UI | Phase 8 | 1-2 days |
+| **Phase 12** | Source code context viewer | Phase 6 | 1 day |
+| **Phase 13** | Polish + responsive + testing | All phases | 2-3 days |
+
+**Total: ~17-25 days**
+
+---
+
+## PHASE 1: Project Setup + Design System
+
+### 1.1 Initialize Next.js Project
+
+```bash
+npx -y create-next-app@latest ./ --typescript --tailwind --eslint --app --src-dir --import-alias "@/*"
+```
+
+### 1.2 Install Dependencies
+
+```bash
+# UI Components
+npm install @radix-ui/react-hover-card @radix-ui/react-dialog @radix-ui/react-dropdown-menu
+npm install @radix-ui/react-tabs @radix-ui/react-tooltip @radix-ui/react-collapsible
+npm install @radix-ui/react-select @radix-ui/react-popover @radix-ui/react-checkbox
+npm install class-variance-authority clsx tailwind-merge
+
+# Icons
+npm install lucide-react react-icons
+
+# Auth
+npm install @clerk/nextjs
+
+# Database (for direct MongoDB routes)
+npm install mongoose
+
+# Utilities
+npm install date-fns uuid
+```
+
+### 1.3 Create Directory Structure
+
+```
+ui/src/
+├── app/
+│   ├── api/                    ← Phase 2-12 (BFF proxy routes)
+│   ├── explore/page.tsx        ← Phase 5-12
+│   ├── integrate/page.tsx      ← Phase 4
+│   ├── settings/page.tsx       ← Phase 3
+│   ├── sign-in/[[...sign-in]]/page.tsx  ← Phase 2
+│   ├── sign-up/[[...sign-up]]/page.tsx  ← Phase 2
+│   ├── layout.tsx
+│   ├── page.tsx                ← Redirect to /explore
+│   └── globals.css
+├── components/
+│   ├── ui/                     ← shadcn/ui primitives (button, input, card, etc.)
+│   ├── side-bar/               ← Phase 2
+│   ├── explore/                ← Phase 5
+│   ├── right-panel/
+│   │   ├── agent/              ← Phase 8-11
+│   │   ├── log/                ← Phase 6
+│   │   └── trace/              ← Phase 7
+│   ├── settings/               ← Phase 3
+│   └── integrate/              ← Phase 4
+├── models/                     ← TypeScript interfaces (Phase 1)
+│   ├── chat.ts
+│   ├── trace.ts
+│   ├── log.ts
+│   ├── code.ts
+│   ├── integrate.ts
+│   ├── provider.ts
+│   └── token.ts
+├── constants/
+│   ├── model.ts                ← LLM model names, chat modes
+│   └── colors.ts               ← Percentile color mapping
+├── lib/
+│   ├── mongodb.ts              ← MongoDB connection utility
+│   ├── clerk-auth.ts           ← Clerk auth helpers for API routes
+│   ├── server-auth-headers.ts  ← Backend auth header builder
+│   └── utils.ts                ← cn() helper, formatters
+├── hooks/
+│   ├── useTraces.ts            ← Trace fetching hook
+│   ├── useChat.ts              ← Chat state hook
+│   └── useProviderConfig.ts    ← Provider config hook
+├── providers/
+│   └── app-provider.tsx        ← Context providers wrapper
+├── utils/
+│   ├── provider.ts             ← buildProviderParams()
+│   └── uuid.ts                 ← generateUuidHex()
+└── middleware.ts               ← Clerk auth middleware
+```
+
+### 1.4 Create Data Models
+
+Create all TypeScript interfaces exactly matching the Python backend response shapes. These are already documented in [TRACEROOT_UI_REFERENCE.md](file:///c:/traceroot-main/TRACEROOT_UI_REFERENCE.md) Section 6. Key files:
+
+#### [NEW] [src/models/trace.ts](file:///c:/traceroot-main/ui/src/models/trace.ts)
+```typescript
+export interface Span {
+  id: string;
+  name: string;
+  start_time: number;
+  end_time: number;
+  duration: number;
+  num_debug_logs?: number;
+  num_info_logs?: number;
+  num_warning_logs?: number;
+  num_error_logs?: number;
+  num_critical_logs?: number;
+  spans?: Span[];
+  telemetry_sdk_language?: string;
+}
+
+export interface Trace {
+  id: string;
+  service_name?: string;
+  duration: number;
+  start_time: number;
+  end_time: number;
+  percentile: string;
+  spans: Span[];
+  telemetry_sdk_language: string[];
+}
+
+export interface TraceResponse {
+  success: boolean;
+  data: Trace[];
+  error?: string;
+  next_pagination_token?: string;
+  has_more?: boolean;
+}
+```
+
+#### [NEW] [src/models/chat.ts](file:///c:/traceroot-main/ui/src/models/chat.ts)
+```typescript
+export type MessageType = "assistant" | "user" | "github" | "statistics";
+export type ActionType = "agent_chat" | "pending_confirmation" | "github_create_issue" | "github_create_pr";
+export type ActionStatus = "pending" | "success" | "failed" | "cancelled" | "awaiting_confirmation";
+
+export interface Reference {
+  number: number;
+  span_id?: string;
+  span_function_name?: string;
+  line_number?: number;
+  log_message?: string;
+}
+
+// NEW: Intelligence metadata from Stage 8
+export interface IntelligenceMetadata {
+  confidence: string;           // "HIGH" | "MEDIUM" | "LOW"
+  pattern_matched: string | null;
+  fast_path: boolean;
+  processing_time_ms: number;
+  top_cause: string | null;
+  top_cause_score: number | null;
+  causes_found: number;
+}
+
+export interface ChatbotResponse {
+  time: number;
+  message: string;
+  reference: Reference[];
+  message_type: MessageType;
+  chat_id: string;
+  action_type?: ActionType;
+  status?: ActionStatus;
+  metadata?: IntelligenceMetadata;  // ← NEW: from your response_builder
+  user_feedback?: "positive" | "negative" | null;  // ← NEW: for feedback loop
+}
+
+export interface ChatResponse {
+  success: boolean;
+  data: ChatbotResponse | null;
+  error?: string;
+}
+```
+
+### 1.5 Design System Tokens
+
+#### [NEW] [src/app/globals.css](file:///c:/traceroot-main/ui/src/app/globals.css) — Core design tokens
+```css
+:root {
+  --background: 0 0% 100%;
+  --foreground: 240 10% 3.9%;
+  --card: 0 0% 100%;
+  --primary: 240 5.9% 10%;
+  --secondary: 240 4.8% 95.9%;
+  --muted: 240 4.8% 95.9%;
+  --accent: 240 4.8% 95.9%;
+  --destructive: 0 84.2% 60.2%;
+  --border: 240 5.9% 90%;
+  --ring: 240 5.9% 10%;
+  --radius: 0.5rem;
+
+  /* TraceRoot custom tokens */
+  --p50: 142 71% 45%;      /* Green */
+  --p75: 48 96% 53%;       /* Yellow */
+  --p90: 25 95% 53%;       /* Orange */
+  --p99: 0 84% 60%;        /* Red */
+  --log-critical: 0 72% 51%;
+  --log-error: 0 84% 60%;
+  --log-warning: 33 100% 50%;
+  --log-info: 215 20% 65%;
+  --log-debug: 271 91% 65%;
+}
+```
+
+---
+
+## PHASE 2: Authentication + Sidebar
+
+### 2.1 Clerk Setup
+
+#### [NEW] [src/middleware.ts](file:///c:/traceroot-main/ui/src/middleware.ts)
+```typescript
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+
+const isProtectedRoute = createRouteMatcher([
+  "/explore(.*)", "/integrate(.*)", "/settings(.*)"
+]);
+
+export default clerkMiddleware(async (auth, req) => {
+  if (isProtectedRoute(req)) await auth.protect();
+});
+
+export const config = {
+  matcher: ["/((?!.*\\..*|_next).*)", "/", "/(api|trpc)(.*)"],
+};
+```
+
+### 2.2 Sidebar Navigation
+
+#### [NEW] `src/components/side-bar/SideBar.tsx`
+- Logo at top
+- Nav links: Explore, Integrate, Settings
+- Active state highlighting based on `usePathname()`
+- Collapsible on mobile
+- User button (Clerk `<UserButton />`) at bottom
+
+### 2.3 Layout
+
+#### [NEW] [src/app/layout.tsx](file:///c:/traceroot-main/ui/src/app/layout.tsx)
+- `<ClerkProvider>` wrapping the entire app
+- Root layout with `<SideBar>` + main content area
+- Font: Inter from Google Fonts
+
+---
+
+## PHASE 3: Settings Page (Provider Config)
+
+> **These routes go DIRECTLY to MongoDB — no Python backend.**
+
+### 3.1 API Routes
+
+#### [NEW] [src/app/api/provider-config/route.ts](file:///c:/traceroot-main/ui/src/app/api/provider-config/route.ts)
+| Method | Action |
+|--------|--------|
+| GET | Load `TraceProviderConfig` + `LogProviderConfig` from MongoDB |
+| POST | Upsert provider config by `userEmail` |
+| DELETE | Remove provider config (specific provider or all) |
+
+### 3.2 Mongoose Schemas
+
+#### [NEW] [src/models/provider.ts](file:///c:/traceroot-main/ui/src/models/provider.ts)
+- `TraceProviderConfig` schema: `userEmail`, `traceProvider`, `awsTraceConfig`, `jaegerTraceConfig`, `tencentTraceConfig`
+- `LogProviderConfig` schema: same structure for logs
+
+### 3.3 UI Components
+
+#### [NEW] `src/components/settings/TraceProviderTabContent.tsx`
+- Tab for each provider: AWS, Jaeger, Tencent
+- Form fields per provider (host/port for Jaeger, access_key/secret_key/region for AWS)
+- Save button → `POST /api/provider-config`
+- Delete button → `DELETE /api/provider-config`
+- Test connection button (future)
+
+#### [NEW] `src/components/settings/LogProviderTabContent.tsx`
+- Same structure as trace, for log provider config
+
+---
+
+## PHASE 4: Integrate Page (Token Management)
+
+> **These routes go DIRECTLY to MongoDB — no Python backend.**
+
+### 4.1 API Routes
+
+#### [NEW] [src/app/api/get_connect/route.ts](file:///c:/traceroot-main/ui/src/app/api/get_connect/route.ts)
+- GET: Fetch token by `resourceType` + `user_email`
+- Queries `traceroot_tokens` or `connection_tokens` collection
+
+#### [NEW] `src/app/api/post_connect/route.ts`
+- POST: Upsert token with `resourceType` + [token](file:///c:/traceroot-main/rest/driver/chat_logic.py#250-263)
+
+#### [NEW] `src/app/api/delete_connect/route.ts`
+- DELETE: Remove token
+
+### 4.2 UI Components
+
+#### [NEW] `src/components/integrate/Item.tsx`
+- Token input field (password type with show/hide toggle)
+- Save / Update / Delete buttons
+- Status indicator (connected ✅ / not connected ❌)
+- Resource types: TraceRoot SDK, GitHub, OpenAI
+
+#### [NEW] `src/components/integrate/RightPanel.tsx`
+- SDK integration guide (code snippets for Python/Node.js/Java)
+- Links to API key generation pages for each provider
+
+---
+
+## PHASE 5: Trace List Panel (Left Panel) — THE CORE
+
+### 5.1 API Route
+
+#### [NEW] [src/app/api/list_trace/route.ts](file:///c:/traceroot-main/ui/src/app/api/list_trace/route.ts)
+- Proxies to `REST_API_ENDPOINT/v1/explore/list-traces`
+- Forwards: `startTime`, `endTime`, `categories[]`, `values[]`, `operations[]`, [trace_provider](file:///c:/traceroot-main/rest/dao/mongodb_dao.py#101-115), [log_provider](file:///c:/traceroot-main/rest/dao/mongodb_dao.py#116-130), `trace_region`, `log_region`, [trace_id](file:///c:/traceroot-main/rest/routers/telemetry.py#111-151), [pagination_token](file:///c:/traceroot-main/rest/utils/pagination.py#137-156)
+- Auth: `createBackendAuthHeaders()` using Clerk
+
+### 5.2 UI Components
+
+#### [NEW] [src/components/explore/ExploreHeader.tsx](file:///c:/traceroot-main/ui/src/components/explore/ExploreHeader.tsx)
+- Container for SearchBar + TimeButton + RefreshButton
+
+#### [NEW] [src/components/explore/SearchBar.tsx](file:///c:/traceroot-main/ui/src/components/explore/SearchBar.tsx)
+- Multi-criterion filter builder
+- Each criterion: category dropdown (service_name, span_name, status_code) + operation dropdown (equals, contains, not_equals) + value input
+- Add/remove criteria buttons
+- Applies filters on submit
+
+#### [NEW] [src/components/explore/TimeButton.tsx](file:///c:/traceroot-main/ui/src/components/explore/TimeButton.tsx)
+- Preset buttons: 5m, 15m, 30m, 1h, 3h, 6h, 12h, 24h
+- Custom time range dialog (absolute start/end pickers)
+- UTC/Local toggle
+
+#### [NEW] [src/components/explore/Trace.tsx](file:///c:/traceroot-main/ui/src/components/explore/Trace.tsx) (~800-1000 lines)
+
+**This is the largest and most complex component.** Key features:
+
+| Feature | Implementation Detail |
+|---------|----------------------|
+| Trace rows | 43px height, shows: checkbox, SDK icon, trace ID badge, percentile tag, service name, duration, error count |
+| Percentile colors | P50=green, P75=yellow, P90=orange, P99=red (use `constants/colors.ts`) |
+| Expand/collapse | `+/-` button expands to show nested `<Span>` tree |
+| Multi-select | Checkboxes with shift-click range selection |
+| Auto-select | First trace selected on load; `?trace_id=` in URL auto-selects |
+| Pagination | "Load More" button, sends [pagination_token](file:///c:/traceroot-main/rest/utils/pagination.py#137-156) |
+| Share | Copy URL with `?trace_id=` parameter to clipboard |
+| Selection callbacks | `onTraceSelect(traceIds)`, `onSpanSelect(spanIds)` → updates right panel |
+
+#### [NEW] `src/components/explore/span/Span.tsx`
+- Recursive span tree renderer
+- Shows: span name, duration, error badge
+- Nested indentation (depth × 16px padding)
+- Clickable to select individual spans
+
+### 5.3 State Management
+
+The explore page needs shared state between left panel, right panel, and agent:
+
+```typescript
+// Explore page state (lifted to page level)
+interface ExploreState {
+  selectedTraceIds: string[];
+  selectedSpanIds: string[];
+  allTraces: Trace[];
+  viewType: "log" | "trace";
+  agentOpen: boolean;
+  timeRange: { start: Date; end: Date };
+  searchCriteria: SearchCriterion[];
+}
+```
+
+---
+
+## PHASE 6: Log View Panel
+
+### 6.1 API Route
+
+#### [NEW] [src/app/api/get_trace_log/route.ts](file:///c:/traceroot-main/ui/src/app/api/get_trace_log/route.ts)
+- Proxies to `REST_API_ENDPOINT/v1/explore/get-logs-by-trace-id`
+- Forwards: [trace_id](file:///c:/traceroot-main/rest/routers/telemetry.py#111-151), `start_time`, `end_time`, `log_group_name`, provider params
+- 90 second timeout
+
+### 6.2 UI Components
+
+#### [NEW] [src/components/right-panel/RightPanelSwitch.tsx](file:///c:/traceroot-main/ui/src/components/right-panel/RightPanelSwitch.tsx)
+- Receives `viewType`, `traceIds`, `spanIds`, `allTraces`
+- Routes to `LogPanelSwitch` or `TracePanelSwitch`
+
+#### [NEW] [src/components/right-panel/ModeToggle.tsx](file:///c:/traceroot-main/ui/src/components/right-panel/ModeToggle.tsx)
+- Three toggle buttons: Log (📄), Trace (🔭), Agent (🤖)
+- Controls `viewType` and `agentOpen` state
+
+#### [NEW] `src/components/right-panel/log/LogDetail.tsx`
+- Fetches logs via `/api/get_trace_log`
+- Groups by span_id → renders in sections
+- Each log entry: timestamp, function_name, level badge (colored), message, file:line
+- Level colors: CRITICAL=dark red, ERROR=red, WARNING=orange, INFO=gray, DEBUG=purple
+- Search/filter input for log messages
+
+#### [NEW] `src/components/right-panel/log/ShowCodeToggle.tsx` (Phase 12)
+- Toggle button appears when log entry has `git_url`
+- Fetches source code context
+- Shows highlighted code with context lines
+
+---
+
+## PHASE 7: Trace Waterfall View
+
+### 7.1 UI Components
+
+#### [NEW] `src/components/right-panel/trace/TraceDetail.tsx`
+- Horizontal bar chart showing span timeline
+- Each span = bar with width proportional to duration
+- Nested spans indented
+- Color = service name hash → consistent colors
+- Click span → selects it → switches to log view for that span
+
+#### [NEW] `src/components/right-panel/trace/TraceDepthChart.tsx`
+- Depth chart showing span nesting levels
+- Visual indicator of trace complexity
+
+---
+
+## PHASE 8: Agent Chat Panel (Core)
+
+### 8.1 API Routes
+
+#### [NEW] [src/app/api/chat/route.ts](file:///c:/traceroot-main/ui/src/app/api/chat/route.ts)
+- POST: Proxies to `REST_API_ENDPOINT/v1/explore/post-chat`
+- Request body: [ChatRequest](file:///c:/traceroot-main/rest/config/chat.py#16-33) (message, trace_id, span_ids, model, mode, chat_id, providers)
+- Response: [ChatResponse](file:///c:/traceroot-main/ui/src/models/chat.ts#56-61) with [ChatbotResponse](file:///c:/traceroot-main/ui/src/models/chat.ts#46-55) containing [metadata](file:///c:/traceroot-main/src/routing/response_builder.py#325-367) (IntelligenceMetadata)
+- Fallback: Static response when `REST_API_ENDPOINT` not set
+
+#### [NEW] [src/app/api/get_chat_history/route.ts](file:///c:/traceroot-main/ui/src/app/api/get_chat_history/route.ts)
+- GET: Proxies to `/v1/explore/get-chat-history`
+
+### 8.2 UI Components
+
+#### [NEW] [src/components/right-panel/agent/Agent.tsx](file:///c:/traceroot-main/ui/src/components/right-panel/agent/Agent.tsx) (~700 lines)
+
+**The chat orchestrator.** Key responsibilities:
+
+| Feature | Detail |
+|---------|--------|
+| Chat state | Messages array, loading state, current chat_id |
+| Send message | `POST /api/chat` with full request body |
+| Receive response | Parse [ChatResponse](file:///c:/traceroot-main/ui/src/models/chat.ts#56-61), extract [metadata](file:///c:/traceroot-main/src/routing/response_builder.py#325-367) |
+| Polling | Every 1s poll `GET /api/get_chat_history` for GitHub/statistics messages |
+| Multi-tab | Support multiple chat tabs per trace |
+| Auto-scroll | Scroll to bottom on new message |
+| Error handling | Show error message in chat if API fails |
+
+```typescript
+// Core message flow
+const sendMessage = async (message: string) => {
+  // 1. Add user message to UI (optimistic)
+  setMessages(prev => [...prev, userMessage]);
+  
+  // 2. Send to backend
+  const response = await fetch("/api/chat", {
+    method: "POST",
+    body: JSON.stringify({
+      message, trace_id, span_ids, model, mode, chat_id,
+      trace_provider, log_provider, provider
+    })
+  });
+  
+  // 3. Parse response with metadata
+  const data: ChatResponse = await response.json();
+  
+  // 4. Add assistant message (includes metadata for Phase 11)
+  setMessages(prev => [...prev, data.data]);
+};
+```
+
+#### [NEW] [src/components/right-panel/agent/MessageInput.tsx](file:///c:/traceroot-main/ui/src/components/right-panel/agent/MessageInput.tsx)
+- Auto-resizing textarea (1-5 rows)
+- Enter = submit, Shift+Enter = newline
+- Mode selector: Agent 🤖 / Chat 💬
+- Model selector: GPT-4o / GPT-4.1-mini / Auto
+- Context badges: trace_id badge, span count badge
+- Send button: disabled until trace selected + text non-empty
+- Disabled state: "Select a trace to start chatting"
+
+#### [NEW] [src/components/right-panel/agent/ChatMessage.tsx](file:///c:/traceroot-main/ui/src/components/right-panel/agent/ChatMessage.tsx)
+
+**The markdown renderer.** Must handle:
+
+| Pattern | Render As |
+|---------|-----------|
+| `[1]`, `[2]` | HoverCard popup → span_id, function_name, line_number, log_message. Click span_id → jump to log view |
+| `` ``[code](file:///c:/traceroot-main/rest/utils/pagination.py#207-242)`` `` | Code block with copy button (hover-to-show) |
+| `**bold**` | `<strong>` |
+| `*italic*` | `<em>` |
+| `` `inline` `` | `<code>` tag |
+| `### heading` | `<h3>` bold |
+| `PR created: URL` | Clickable PR link |
+| GitHub issue URLs | `#42` clickable link |
+| `CRITICAL/ERROR/WARNING` | Colored text |
+| `[text](url)` | Standard markdown link |
+
+**Message roles and avatars:**
+| Role | Avatar | Alignment |
+|------|--------|-----------|
+| [user](file:///c:/traceroot-main/rest/utils/auth.py#14-18) | Profile photo / initial letter | Right |
+| `assistant` | 🤖 Robot icon | Left |
+| [github](file:///c:/traceroot-main/rest/driver/chat_logic.py#250-263) | GitHub Octocat | Left |
+| `statistics` | 📊 Chart icon | Left |
+
+---
+
+## PHASE 9: Chat History + Metadata + Reasoning
+
+### 9.1 API Routes
+
+#### [NEW] [src/app/api/get_chat_metadata/route.ts](file:///c:/traceroot-main/ui/src/app/api/get_chat_metadata/route.ts)
+- GET: Proxies to `/v1/explore/get-chat-metadata`
+
+#### [NEW] [src/app/api/get_chat_metadata_history/route.ts](file:///c:/traceroot-main/ui/src/app/api/get_chat_metadata_history/route.ts)
+- GET: Proxies to `/v1/explore/get-chat-metadata-history`
+
+#### [NEW] `src/app/api/chat/[chatId]/reasoning/route.ts`
+- GET: Queries MongoDB `reasoning_streams` collection by `chat_id`
+
+### 9.2 UI Components
+
+#### [NEW] [src/components/right-panel/agent/TopBar.tsx](file:///c:/traceroot-main/ui/src/components/right-panel/agent/TopBar.tsx)
+- Multi-tab row with animated title transitions
+- `+` button: new chat tab
+- `⏱` button: history dropdown
+- History grouped by: Today / Yesterday / Last Week / Last Month / Older
+- Tab close `×` buttons
+- Active tab highlight
+
+#### [NEW] [src/components/right-panel/agent/chat-reasoning.tsx](file:///c:/traceroot-main/ui/src/components/right-panel/agent/chat-reasoning.tsx)
+- Collapsible accordion beneath each user message
+- Fetches reasoning steps via `/api/chat/[id]/reasoning`
+- Shows agent thinking process
+- "Thinking..." animation while loading
+
+---
+
+## PHASE 10: GitHub Action Flow
+
+### 10.1 API Route
+
+#### [NEW] [src/app/api/confirm-github-action/route.ts](file:///c:/traceroot-main/ui/src/app/api/confirm-github-action/route.ts)
+- POST: Proxies to `/v1/explore/confirm-github-action`
+- Body: `{ chat_id, message_timestamp, confirmed }`
+
+### 10.2 UI — Confirmation Buttons
+
+In [ChatMessage.tsx](file:///c:/traceroot-main/ui/src/components/right-panel/agent/ChatMessage.tsx), when `status === "awaiting_confirmation"`:
+```tsx
+<div className="flex gap-2 mt-2">
+  <Button variant="default" onClick={() => onSendMessage("yes")}>
+    Yes, create it
+  </Button>
+  <Button variant="outline" className="text-red-500" onClick={() => onSendMessage("no")}>
+    No, cancel
+  </Button>
+</div>
+```
+
+After confirmation, the response message renders GitHub URLs as clickable `PR #42` links.
+
+---
+
+## PHASE 11: Intelligence Metadata + Feedback UI ⭐ (NEW)
+
+> **This is the unique part — not in the original TraceRoot UI. This surfaces your KAN pipeline intelligence and collects feedback for Stage 9.**
+
+### 11.1 Intelligence Metadata Display
+
+On every assistant message, show metadata from `ChatbotResponse.metadata`:
+
+```
+┌─────────────────────────────────────────────────┐
+│ 🤖 Assistant                                    │
+│                                                 │
+│ [HIGH ✅] [N+1 Query] [⚡ Fast Path] [234ms]    │  ← metadata bar
+│                                                 │
+│ "The checkout endpoint has an N+1 query          │
+│  pattern in get_user_cart [1]..."                │
+│                                                 │
+│                            [👍] [👎]             │  ← feedback buttons
+└─────────────────────────────────────────────────┘
+```
+
+**Metadata bar elements:**
+| Element | Source | Display |
+|---------|--------|---------|
+| Confidence badge | `metadata.confidence` | HIGH=green pill, MEDIUM=yellow pill, LOW=red pill |
+| Pattern tag | `metadata.pattern_matched` | Blue outline pill: "N+1 Query", "Slow Query", etc. |
+| Fast path indicator | `metadata.fast_path` | ⚡ lightning bolt if true, 🧠 brain if full LLM |
+| Processing time | `metadata.processing_time_ms` | Gray text: "234ms" |
+| Causes count | `metadata.causes_found` | If > 1: "3 causes found" |
+
+### 11.2 Feedback Buttons (👍 / 👎)
+
+On every assistant message with `message_type === "assistant"`:
+
+```tsx
+<div className="flex items-center gap-1 mt-1">
+  <Button variant="ghost" size="sm" onClick={() => submitFeedback("positive")}>
+    👍
+  </Button>
+  <Button variant="ghost" size="sm" onClick={() => submitFeedback("negative")}>
+    👎
+  </Button>
+</div>
+```
+
+### 11.3 Feedback API
+
+#### [NEW] `src/app/api/feedback/route.ts`
+- POST: Proxies to Python backend → updates [intelligence_metrics](file:///c:/traceroot-main/src/dao/sqlite_dao.py#538-613) record
+- Body: `{ chat_id, message_timestamp, feedback: "positive" | "negative" }`
+- Backend calls `dao.update_user_feedback(chat_id, timestamp, feedback)`
+
+> **This feedback is consumed by Stage 9 (Evaluator)** in the weekly evaluation loop. The evaluator reads [intelligence_metrics](file:///c:/traceroot-main/src/dao/sqlite_dao.py#538-613) records with feedback, calculates pattern accuracy, and adjusts `eval_config.json`.
+
+### 11.4 Backend Changes Needed
+
+Add one new endpoint to [ChatRouterClass](file:///c:/traceroot-main/rest/routers/chat.py#30-323):
+
+```python
+# rest/routers/chat.py
+self.router.post("/update-feedback")(self.update_feedback)
+
+async def update_feedback(self, request: Request, req_data: FeedbackRequest):
+    """Update user feedback for an intelligence metrics record."""
+    result = await self.driver.update_feedback(
+        chat_id=req_data.chat_id,
+        message_timestamp=req_data.message_timestamp,
+        feedback=req_data.feedback,
+    )
+    return result
+```
+
+---
+
+## PHASE 12: Source Code Context Viewer
+
+### 12.1 API Route
+
+#### [NEW] [src/app/api/get_line_context_content/route.ts](file:///c:/traceroot-main/ui/src/app/api/get_line_context_content/route.ts)
+- GET: Proxies to `/v1/explore/get-line-context-content`
+- Query: [url](file:///c:/traceroot-main/rest/utils/github.py#4-46) (GitHub file URL with line number)
+
+### 12.2 UI — ShowCodeToggle
+
+In [LogDetail.tsx](file:///c:/traceroot-main/ui/src/components/right-panel/log/LogDetail.tsx), when a log entry has `git_url`:
+
+```
+┌──────────────────────────────────────┐
+│ ERROR | get_user_cart | cart.py:84    │
+│ "SELECT * FROM products WHERE..."    │
+│                        [Show Code ▼] │
+├──────────────────────────────────────┤
+│   82 │   for item in cart.items:     │
+│   83 │       # fetch each product    │
+│ → 84 │       db.query(f"SELECT...")   │  ← highlighted line
+│   85 │   return total                │
+│   86 │                               │
+└──────────────────────────────────────┘
+```
+
+---
+
+## PHASE 13: Polish + Testing
+
+### 13.1 Responsive Design
+- Mobile: sidebar collapses to hamburger menu
+- Tablet: right panel stacks below left panel
+- Desktop: full 3-panel layout
+
+### 13.2 Loading States
+- Trace list: skeleton rows while loading
+- Chat: pulsing robot avatar with spinner
+- Log view: skeleton lines
+
+### 13.3 Error States
+- Network error → toast notification
+- Empty trace list → "No traces found" with time range suggestion
+- Chat error → error message in chat bubble
+
+### 13.4 Keyboard Shortcuts
+- `Enter` → send message
+- `Shift+Enter` → newline
+- `Escape` → close dialogs
+
+### 13.5 Testing Approach
+- Verify each API route returns correct response shape
+- Test chat flow end-to-end: message → response → references
+- Test feedback flow: 👍/👎 → backend receives → stored in DB
+- Test provider config: save/load/delete cycle
+- Test with real Jaeger traces
+
+---
+
+## Complete File Checklist
+
+### Models (Phase 1)
+- [ ] [src/models/trace.ts](file:///c:/traceroot-main/ui/src/models/trace.ts) — Span, Trace, TraceResponse
+- [ ] [src/models/log.ts](file:///c:/traceroot-main/ui/src/models/log.ts) — LogLevel, LogEntry, SpanLog, TraceLog
+- [ ] [src/models/chat.ts](file:///c:/traceroot-main/ui/src/models/chat.ts) — ChatRequest, ChatbotResponse, Reference, IntelligenceMetadata, ChatMetadata
+- [ ] [src/models/code.ts](file:///c:/traceroot-main/ui/src/models/code.ts) — CodeResponse
+- [ ] [src/models/integrate.ts](file:///c:/traceroot-main/ui/src/models/integrate.ts) — ResourceType, TokenResource
+- [ ] [src/models/provider.ts](file:///c:/traceroot-main/ui/src/models/provider.ts) — Provider config Mongoose schemas
+- [ ] [src/models/token.ts](file:///c:/traceroot-main/ui/src/models/token.ts) — Token Mongoose schemas
+
+### API Routes (Phases 3-12)
+- [ ] [src/app/api/provider-config/route.ts](file:///c:/traceroot-main/ui/src/app/api/provider-config/route.ts) — GET/POST/DELETE (direct MongoDB)
+- [ ] [src/app/api/get_connect/route.ts](file:///c:/traceroot-main/ui/src/app/api/get_connect/route.ts) — GET (direct MongoDB)
+- [ ] `src/app/api/post_connect/route.ts` — POST (direct MongoDB)
+- [ ] `src/app/api/delete_connect/route.ts` — DELETE (direct MongoDB)
+- [ ] [src/app/api/list_trace/route.ts](file:///c:/traceroot-main/ui/src/app/api/list_trace/route.ts) — GET → Python backend
+- [ ] [src/app/api/get_trace_log/route.ts](file:///c:/traceroot-main/ui/src/app/api/get_trace_log/route.ts) — GET → Python backend
+- [ ] [src/app/api/chat/route.ts](file:///c:/traceroot-main/ui/src/app/api/chat/route.ts) — POST → Python backend
+- [ ] [src/app/api/get_chat_history/route.ts](file:///c:/traceroot-main/ui/src/app/api/get_chat_history/route.ts) — GET → Python backend
+- [ ] [src/app/api/get_chat_metadata/route.ts](file:///c:/traceroot-main/ui/src/app/api/get_chat_metadata/route.ts) — GET → Python backend
+- [ ] [src/app/api/get_chat_metadata_history/route.ts](file:///c:/traceroot-main/ui/src/app/api/get_chat_metadata_history/route.ts) — GET → Python backend
+- [ ] `src/app/api/chat/[chatId]/reasoning/route.ts` — GET (MongoDB direct)
+- [ ] [src/app/api/confirm-github-action/route.ts](file:///c:/traceroot-main/ui/src/app/api/confirm-github-action/route.ts) — POST → Python backend
+- [ ] [src/app/api/get_line_context_content/route.ts](file:///c:/traceroot-main/ui/src/app/api/get_line_context_content/route.ts) — GET → Python backend
+- [ ] `src/app/api/feedback/route.ts` — POST → Python backend ⭐ NEW
+
+### Components (Phases 2-12)
+- [ ] `src/components/side-bar/SideBar.tsx`
+- [ ] [src/components/explore/ExploreHeader.tsx](file:///c:/traceroot-main/ui/src/components/explore/ExploreHeader.tsx)
+- [ ] [src/components/explore/SearchBar.tsx](file:///c:/traceroot-main/ui/src/components/explore/SearchBar.tsx)
+- [ ] [src/components/explore/TimeButton.tsx](file:///c:/traceroot-main/ui/src/components/explore/TimeButton.tsx)
+- [ ] [src/components/explore/Trace.tsx](file:///c:/traceroot-main/ui/src/components/explore/Trace.tsx)
+- [ ] `src/components/explore/span/Span.tsx`
+- [ ] [src/components/right-panel/ModeToggle.tsx](file:///c:/traceroot-main/ui/src/components/right-panel/ModeToggle.tsx)
+- [ ] [src/components/right-panel/RightPanelSwitch.tsx](file:///c:/traceroot-main/ui/src/components/right-panel/RightPanelSwitch.tsx)
+- [ ] `src/components/right-panel/log/LogDetail.tsx`
+- [ ] `src/components/right-panel/log/ShowCodeToggle.tsx`
+- [ ] `src/components/right-panel/trace/TraceDetail.tsx`
+- [ ] `src/components/right-panel/trace/TraceDepthChart.tsx`
+- [ ] [src/components/right-panel/agent/Agent.tsx](file:///c:/traceroot-main/ui/src/components/right-panel/agent/Agent.tsx)
+- [ ] [src/components/right-panel/agent/TopBar.tsx](file:///c:/traceroot-main/ui/src/components/right-panel/agent/TopBar.tsx)
+- [ ] [src/components/right-panel/agent/ChatMessage.tsx](file:///c:/traceroot-main/ui/src/components/right-panel/agent/ChatMessage.tsx)
+- [ ] [src/components/right-panel/agent/MessageInput.tsx](file:///c:/traceroot-main/ui/src/components/right-panel/agent/MessageInput.tsx)
+- [ ] [src/components/right-panel/agent/chat-reasoning.tsx](file:///c:/traceroot-main/ui/src/components/right-panel/agent/chat-reasoning.tsx)
+- [ ] `src/components/settings/TraceProviderTabContent.tsx`
+- [ ] `src/components/settings/LogProviderTabContent.tsx`
+- [ ] `src/components/integrate/Item.tsx`
+- [ ] `src/components/integrate/RightPanel.tsx`
+
+### Utilities
+- [ ] `src/lib/mongodb.ts`
+- [ ] `src/lib/clerk-auth.ts`
+- [ ] `src/lib/server-auth-headers.ts`
+- [ ] `src/utils/provider.ts`
+- [ ] `src/utils/uuid.ts`
+- [ ] `src/constants/model.ts`
+- [ ] `src/constants/colors.ts`
+- [ ] [src/middleware.ts](file:///c:/traceroot-main/ui/src/middleware.ts)
+
+---
+
+## How the UI Connects to Your KAN Pipeline Stages
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        YOUR UI                               │
+│                                                              │
+│  User types question ──► POST /api/chat                      │
+│                              │                               │
+│                    ┌─────────▼──────────┐                    │
+│                    │  Python Backend     │                    │
+│                    │                     │                    │
+│                    │  Stage 1: Ingest    │                    │
+│                    │  Stage 2: Tree      │                    │
+│                    │  Stage 3: Intel     │ ← pattern_matched │
+│                    │  Stage 4: Router    │ ← fast_path       │
+│                    │  Stage 5: LLM       │                   │
+│                    │  Stage 6: Validate  │                   │
+│                    │  Stage 7: Persist   │ ← stores metrics  │
+│                    │  Stage 8: Respond   │ ← metadata        │
+│                    └─────────┬──────────┘                    │
+│                              │                               │
+│  ChatbotResponse ◄───────────┘                               │
+│  ├── message (markdown with [1] refs)                        │
+│  ├── references[] (span links)                               │
+│  └── metadata (confidence, pattern, fast_path, timing)       │
+│                                                              │
+│  UI renders: message + metadata bar + feedback buttons       │
+│                                                              │
+│  User clicks 👍/👎 ──► POST /api/feedback                   │
+│                              │                               │
+│                    ┌─────────▼──────────┐                    │
+│                    │  Stage 9: Evaluator │ ← reads feedback  │
+│                    │  (weekly cron job)  │ ← adjusts weights │
+│                    │  Writes eval_config │ ← improves Stage 3│
+│                    └────────────────────┘                    │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Build Order Recommendation
+
+Start with Phases 1-2 (setup + auth), then **Phase 3-4** (settings + integrate) because they're simpler and let you test MongoDB connections. Then **Phase 5** (trace list) — this is the hardest, most code-intensive phase. Once the trace list works, Phases 6-12 layer on incrementally.
+
+**Phase 11** (intelligence metadata + feedback) is the most important differentiator — it's what makes this UI different from Grafana's. Don't skip it.

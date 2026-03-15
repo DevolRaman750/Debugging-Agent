@@ -16,28 +16,65 @@ class JaegerTraceClient(TraceClient):
         
         return self._convert_jaeger_trace(data["data"][0])
     
-    async def get_recent_traces(self, start_time, end_time, limit: int = 50) -> list[Trace]:
-        params = {
-            "start": int(start_time.timestamp() * 1_000_000),  # seconds → microseconds
-            "end": int(end_time.timestamp() * 1_000_000),
-            "limit": limit
-        }
-
-        response = requests.get(f"{self.api_url}/traces", params=params)
+    async def get_services(self) -> list[str]:
+        """Get all service names known to Jaeger."""
+        response = requests.get(f"{self.api_url}/services")
         if response.status_code != 200:
             return []
+        return response.json().get("data", [])
 
-        data = response.json().get("data", [])
-        traces: list[Trace] = []
+    async def get_recent_traces(self, start_time, end_time, limit: int = 50, service: str | None = None) -> list[Trace]:
+        all_traces: list[Trace] = []
 
-        for trace_data in data:
-            traces.append(self._convert_jaeger_trace(trace_data))
+        if service:
+            services = [service]
+        else:
+            # Query all known services
+            services = await self.get_services()
+            if not services:
+                return []
 
-        return traces
+        seen_trace_ids: set[str] = set()
+
+        for svc in services:
+            params = {
+                "service": svc,
+                "start": int(start_time.timestamp() * 1_000_000),
+                "end": int(end_time.timestamp() * 1_000_000),
+                "limit": limit,
+            }
+
+            response = requests.get(f"{self.api_url}/traces", params=params)
+            if response.status_code != 200:
+                continue
+
+            data = response.json().get("data", [])
+
+            for trace_data in data:
+                tid = trace_data.get("traceID", "")
+                if tid not in seen_trace_ids:
+                    seen_trace_ids.add(tid)
+                    trace = self._convert_jaeger_trace(trace_data)
+                    # Set service name from the Jaeger service
+                    if not trace.service_name:
+                        trace.service_name = svc
+                    all_traces.append(trace)
+
+        # Sort by start_time descending (most recent first)
+        all_traces.sort(key=lambda t: t.start_time, reverse=True)
+        return all_traces[:limit]
     
     def _convert_jaeger_trace(self, jaeger_data: dict) -> Trace:
         spans_data = jaeger_data.get("spans", [])
+        processes = jaeger_data.get("processes", {})
         spans_dict = {}
+
+        # Determine primary service name from processes
+        service_name = None
+        if processes:
+            # Use the first process's serviceName
+            first_process = next(iter(processes.values()), {})
+            service_name = first_process.get("serviceName")
         
         # Convert each span
         for span_data in spans_data:
@@ -58,6 +95,7 @@ class JaegerTraceClient(TraceClient):
             start_time=min(s.start_time for s in spans_dict.values()),
             end_time=max(s.end_time for s in spans_dict.values()),
             duration=sum(s.duration for s in root_spans),
+            service_name=service_name,
             spans=root_spans
         )
 
