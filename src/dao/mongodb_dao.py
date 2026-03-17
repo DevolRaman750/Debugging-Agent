@@ -290,19 +290,51 @@ class TraceRootMongoDBClient:
     async def update_user_feedback(
         self,
         chat_id: str,
-        trace_id: str,
+        timestamp: float,
         feedback: str,
-        comment: str | None = None,
-    ):
-        """Update user feedback for a specific RCA result."""
-        await self.db.intelligence_metrics.update_one(
-            {"chat_id": chat_id, "trace_id": trace_id},
-            {"$set": {
+    ) -> bool:
+        """Update user feedback for a specific RCA result.
+
+        Args:
+            chat_id: The conversation ID.
+            timestamp: UNIX epoch timestamp (seconds or milliseconds).
+            feedback: Either "positive" or "negative".
+
+        Returns:
+            True if at least one document was modified, otherwise False.
+        """
+        ts_value = float(timestamp)
+        if ts_value > 1e12:
+            ts_value /= 1000.0
+        message_iso = datetime.fromtimestamp(ts_value, tz=timezone.utc).isoformat()
+
+        update_doc = {
+            "$set": {
                 "user_feedback": feedback,
                 "feedback_timestamp": datetime.now(timezone.utc).isoformat(),
-                "feedback_comment": comment,
-            }},
+            }
+        }
+
+        result = await self.db.intelligence_metrics.update_one(
+            {"chat_id": chat_id, "timestamp": message_iso},
+            update_doc,
         )
+
+        if result.modified_count > 0:
+            return True
+
+        latest_doc = await self.db.intelligence_metrics.find_one(
+            {"chat_id": chat_id},
+            sort=[("timestamp", -1)],
+        )
+        if not latest_doc:
+            return False
+
+        fallback_result = await self.db.intelligence_metrics.update_one(
+            {"_id": latest_doc["_id"]},
+            update_doc,
+        )
+        return fallback_result.modified_count > 0
 
     async def get_pattern_accuracy(self, pattern_name: str) -> dict:
         """Get accuracy stats for a specific pattern."""

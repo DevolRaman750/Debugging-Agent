@@ -13,7 +13,7 @@ jest.mock("@/hooks/useSafeAuth", () => ({
 
 jest.mock("@/components/right-panel/agent/chat-reasoning", () => ({
   __esModule: true,
-  ChatReasoning: () => <div data-testid="chat-reasoning" />,
+  default: () => <div data-testid="chat-reasoning" />,
 }));
 
 jest.mock("@/components/ui/shadcn-io/ai/reasoning", () => ({
@@ -25,6 +25,11 @@ jest.mock("@/components/ui/shadcn-io/ai/reasoning", () => ({
 
 describe("<ChatMessage />", () => {
   beforeEach(() => {
+    (global as any).fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: true }),
+    });
+
     Object.defineProperty(navigator, "clipboard", {
       configurable: true,
       value: {
@@ -33,7 +38,7 @@ describe("<ChatMessage />", () => {
     });
   });
 
-  it("renders metadata bar and reference pill, and selects span on click", () => {
+  it("renders metadata bar and reference pill, and selects span on click", async () => {
     const onSpanSelect = jest.fn();
 
     render(
@@ -67,6 +72,7 @@ describe("<ChatMessage />", () => {
         isLoading={false}
         messagesEndRef={{ current: null }}
         onSpanSelect={onSpanSelect}
+        chatId="chat-1"
       />,
     );
 
@@ -80,6 +86,18 @@ describe("<ChatMessage />", () => {
     expect(onSpanSelect).toHaveBeenCalledWith("span-123");
 
     expect(screen.getByText("ERROR")).toBeInTheDocument();
+
+    const thumbsUp = screen.getByRole("button", { name: "Thumbs up" });
+    fireEvent.click(thumbsUp);
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        "/api/feedback",
+        expect.objectContaining({
+          method: "POST",
+        }),
+      );
+    });
   });
 
   it("copies fenced code and shows temporary copied state", async () => {

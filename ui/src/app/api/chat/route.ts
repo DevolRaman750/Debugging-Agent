@@ -25,6 +25,22 @@ function toEpochMs(value: unknown): number {
   return Date.now();
 }
 
+function toIsoString(value: unknown): string {
+  if (typeof value === "number") {
+    const ms = value > 1e12 ? value : value * 1000;
+    return new Date(ms).toISOString();
+  }
+
+  if (typeof value === "string") {
+    const parsed = Date.parse(value);
+    if (!Number.isNaN(parsed)) {
+      return new Date(parsed).toISOString();
+    }
+  }
+
+  return new Date().toISOString();
+}
+
 export async function POST(
   request: Request,
 ): Promise<NextResponse<ChatResponse>> {
@@ -64,13 +80,13 @@ export async function POST(
 
         // Create the request body matching the ChatRequest structure from the REST API
         const apiRequestBody = {
-          time: time ?? Date.now(),
+          time: toIsoString(time),
           message,
           message_type: message_type ?? "user",
           trace_id,
           span_ids: span_ids ?? [],
-          start_time: start_time ?? Date.now(),
-          end_time: end_time ?? Date.now(),
+          start_time: toIsoString(start_time),
+          end_time: toIsoString(end_time),
           model: model ?? "auto",
           mode: mode ?? "agent",
           chat_id,
@@ -90,13 +106,43 @@ export async function POST(
           body: JSON.stringify(apiRequestBody),
         });
 
-        if (!apiResponse.ok) {
+        let finalResponse = apiResponse;
+
+        // Compatibility retry for backends with stricter/different request schemas.
+        if (apiResponse.status === 422) {
+          const compatibilityBody = {
+            time: toEpochMs(time),
+            message,
+            trace_id,
+            span_ids: span_ids ?? [],
+            start_time: toEpochMs(start_time),
+            end_time: toEpochMs(end_time),
+            model: model === "llama-3.3-70b-versatile" ? "auto" : model ?? "auto",
+            mode:
+              typeof mode === "string"
+                ? mode.toUpperCase() === "CHAT"
+                  ? "CHAT"
+                  : "AGENT"
+                : "AGENT",
+            chat_id,
+            service_name: null,
+          };
+
+          finalResponse = await fetch(apiUrl, {
+            method: "POST",
+            headers,
+            body: JSON.stringify(compatibilityBody),
+          });
+        }
+
+        if (!finalResponse.ok) {
+          const errorBody = await finalResponse.text();
           throw new Error(
-            `REST API call failed with status: ${apiResponse.status}`,
+            `REST API call failed with status: ${finalResponse.status}; body: ${errorBody}`,
           );
         }
 
-        const apiData = await apiResponse.json();
+        const apiData = await finalResponse.json();
 
         const responseMetadata = apiData?.metadata as
           | IntelligenceMetadata

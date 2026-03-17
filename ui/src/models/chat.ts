@@ -24,7 +24,7 @@ export interface Reference {
 
 // NEW: Intelligence metadata from Stage 8
 export interface IntelligenceMetadata {
-  confidence: string;           // "HIGH" | "MEDIUM" | "LOW"
+  confidence: "HIGH" | "MEDIUM" | "LOW";
   pattern_matched: string | null;
   fast_path: boolean;
   processing_time_ms: number;
@@ -71,4 +71,17 @@ export interface ChatResponse {
 
 export interface ChatHistoryResponse {
   history: ChatbotResponse[];
+}
+
+export interface ChatMetadata {
+  chat_id: string;
+  timestamp: number;
+  chat_title: string;
+  trace_id: string;
+}
+
+export interface ChatTab {
+  id: string;
+  title: string;
+  isNew: boolean;
 }

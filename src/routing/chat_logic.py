@@ -8,6 +8,9 @@ from src.agents.general_agent import GeneralAgent
 from src.service.provider import ObservabilityProvider
 from src.context.tree_builder import build_heterogeneous_tree
 from src.context.utils import find_root_span
+from src.dao.factory import create_dao
+
+
 class ChatLogic:
     """Main orchestrator for chat operations."""
     
@@ -17,6 +20,7 @@ class ChatLogic:
         self.general_agent = GeneralAgent()
         # self.code_agent = CodeAgent()
         self.observe_provider = ObservabilityProvider.create_jaeger_provider()
+        self.db_client = create_dao()
     
     async def post_chat(
         self,

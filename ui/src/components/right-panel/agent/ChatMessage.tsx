@@ -10,13 +10,15 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "../../ui/hover-card";
-import { ChatReasoning } from "./chat-reasoning";
+import ChatReasoning from "@/components/right-panel/agent/chat-reasoning";
 import {
   Reasoning,
   ReasoningContent,
   ReasoningTrigger,
 } from "../../ui/shadcn-io/ai/reasoning";
-import { BarChart3, Check, Copy, Zap } from "lucide-react";
+import { BarChart3, Check, Copy } from "lucide-react";
+import IntelligenceMetadataBar from "@/components/right-panel/agent/IntelligenceMetadataBar";
+import FeedbackAction from "@/components/right-panel/agent/FeedbackAction";
 
 interface Message {
   id: string;
@@ -80,16 +82,6 @@ const formatTimestamp = (timestamp: Date | string) => {
   };
 
   return `${y} ${m} ${d}${getOrdinalSuffix(d)} ${h}:${min}:${s}`;
-};
-
-const confidenceClass = (confidence: string) => {
-  if (confidence === "HIGH") {
-    return "bg-emerald-100 text-emerald-700 border-emerald-200";
-  }
-  if (confidence === "MEDIUM") {
-    return "bg-orange-100 text-orange-700 border-orange-200";
-  }
-  return "bg-red-100 text-red-700 border-red-200";
 };
 
 const highlightLogLevel = (level: string) => {
@@ -383,15 +375,24 @@ export default function ChatMessage({
     onSendMessage?.(value);
   };
 
+  const latestUserMessageIndex = React.useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      if (messages[i].role === "user") {
+        return i;
+      }
+    }
+    return -1;
+  }, [messages]);
+
   return (
     <div className="flex-1 overflow-y-auto p-3 flex flex-col bg-zinc-50 dark:bg-zinc-900 min-h-0">
       <div className="flex-1" />
       {messages.map((message, index) => {
-        const shouldShowReasoning = message.role === "user";
+        const shouldShowReasoning =
+          message.role === "user" && index === latestUserMessageIndex;
         const nextAssistantMessage = messages
           .slice(index + 1)
           .find((item) => item.role === "assistant");
-        const nextMessageTimestamp = nextAssistantMessage?.timestamp;
         const isThisMessageLoading = isLoading && !nextAssistantMessage;
 
         const isUser = message.role === "user";
@@ -420,29 +421,7 @@ export default function ChatMessage({
 
               <div className={`max-w-[72%] rounded-xl px-4 py-3 break-words ${bubbleClass}`}>
                 {message.role === "assistant" && message.metadata ? (
-                  <div className="mb-2 flex flex-wrap gap-1.5 items-center text-[11px]">
-                    <span
-                      className={`inline-flex items-center rounded-full border px-2 py-0.5 font-semibold ${confidenceClass(
-                        message.metadata.confidence,
-                      )}`}
-                    >
-                      {message.metadata.confidence}
-                    </span>
-                    {message.metadata.pattern_matched ? (
-                      <span className="inline-flex items-center rounded-full border border-zinc-200 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5">
-                        {message.metadata.pattern_matched}
-                      </span>
-                    ) : null}
-                    {message.metadata.fast_path ? (
-                      <span className="inline-flex items-center gap-1 rounded-full border border-yellow-200 bg-yellow-100 text-yellow-700 px-2 py-0.5">
-                        <Zap className="w-3 h-3" />
-                        Fast Path
-                      </span>
-                    ) : null}
-                    <span className="inline-flex items-center rounded-full border border-zinc-200 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5">
-                      {message.metadata.processing_time_ms}ms
-                    </span>
-                  </div>
+                  <IntelligenceMetadataBar metadata={message.metadata} />
                 ) : null}
 
                 <div className="whitespace-pre-wrap break-words text-xs leading-6">
@@ -458,6 +437,18 @@ export default function ChatMessage({
                     handleCopyCode,
                   )}
                 </div>
+
+                {message.role === "assistant" && chatId ? (
+                  <FeedbackAction
+                    chatId={chatId}
+                    messageTimestamp={
+                      message.timestamp instanceof Date
+                        ? message.timestamp.getTime()
+                        : new Date(message.timestamp).getTime()
+                    }
+                    initialFeedback={message.user_feedback ?? null}
+                  />
+                ) : null}
 
                 <p className="text-[11px] mt-2 opacity-70">
                   {formatTimestamp(message.timestamp)}
@@ -513,10 +504,12 @@ export default function ChatMessage({
                 {chatId ? (
                   <ChatReasoning
                     chatId={chatId}
-                    className="w-full"
                     isLoading={isThisMessageLoading}
-                    userMessageTimestamp={message.timestamp}
-                    nextMessageTimestamp={nextMessageTimestamp}
+                    afterTimestamp={
+                      message.timestamp instanceof Date
+                        ? message.timestamp.getTime()
+                        : new Date(message.timestamp).getTime()
+                    }
                   />
                 ) : (
                   <Reasoning

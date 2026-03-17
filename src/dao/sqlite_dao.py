@@ -614,34 +614,66 @@ class TraceRootSQLiteClient:
     async def update_user_feedback(
         self,
         chat_id: str,
-        trace_id: str,
+        timestamp: float,
         feedback: str,
-        comment: str | None = None,
-    ):
+    ) -> bool:
         """Update user feedback for a specific RCA result.
 
         Called when the user clicks thumbs up or thumbs down.
 
         Args:
             chat_id: The conversation ID
-            trace_id: The trace ID
+            timestamp: UNIX epoch timestamp (seconds or milliseconds)
             feedback: "positive" or "negative"
-            comment: Optional text comment from the user
+
+        Returns:
+            True if at least one row was modified, otherwise False.
         """
         await self._init_db()
+
+        ts_value = float(timestamp)
+        # Normalize ms to seconds if needed.
+        if ts_value > 1e12:
+            ts_value /= 1000.0
+        message_iso = datetime.fromtimestamp(ts_value, tz=timezone.utc).isoformat()
 
         async with aiosqlite.connect(self.db_path) as db:
             feedback_ts = datetime.now(timezone.utc).isoformat()
 
-            await db.execute(
+            cursor = await db.execute(
                 """UPDATE intelligence_metrics
                    SET user_feedback = ?,
-                       feedback_timestamp = ?,
-                       feedback_comment = ?
-                   WHERE chat_id = ? AND trace_id = ?""",
-                (feedback, feedback_ts, comment, chat_id, trace_id)
+                       feedback_timestamp = ?
+                   WHERE chat_id = ? AND timestamp = ?""",
+                (feedback, feedback_ts, chat_id, message_iso),
             )
+
+            if cursor.rowcount == 0:
+                # Fallback: if exact timestamp format does not match, update latest metric in the chat.
+                fallback_cursor = await db.execute(
+                    """SELECT id FROM intelligence_metrics
+                       WHERE chat_id = ?
+                       ORDER BY timestamp DESC
+                       LIMIT 1""",
+                    (chat_id,),
+                )
+                row = await fallback_cursor.fetchone()
+                if row is None:
+                    await db.commit()
+                    return False
+
+                fallback_update = await db.execute(
+                    """UPDATE intelligence_metrics
+                       SET user_feedback = ?,
+                           feedback_timestamp = ?
+                       WHERE id = ?""",
+                    (feedback, feedback_ts, row[0]),
+                )
+                await db.commit()
+                return fallback_update.rowcount > 0
+
             await db.commit()
+            return cursor.rowcount > 0
 
     async def get_pattern_accuracy(self, pattern_name: str) -> dict:
         """Get accuracy stats for a specific pattern (for evaluation loop).

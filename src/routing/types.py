@@ -1,7 +1,7 @@
 from enum import Enum 
 from typing import Literal, Optional
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 class ChatMode(str, Enum):
     """chat mode determine available agents"""
@@ -10,7 +10,10 @@ class ChatMode(str, Enum):
 
 class ChatModel(str,Enum):
     """Available LLM models"""
+    LLAMA_3_3_70B = "llama-3.3-70b-versatile"
     GPT_4O = 'gpt-4o'
+    GPT_4_1 = "gpt-4.1"
+    GPT_5 = "gpt-5"
     GPT_4_TURBO = "gpt-4-turbo"
     GPT_4_1_MINI = "gpt-4.1-mini"
     AUTO = "auto"
@@ -47,6 +50,30 @@ class ChatRequest(BaseModel):
     mode: ChatMode = ChatMode.CHAT
     end_time: Optional[datetime] = None 
     service_name : Optional[str] = None
+
+    @field_validator("time", mode="before")
+    @classmethod
+    def _normalize_time(cls, value):
+        """Accept ISO strings or epoch seconds/milliseconds for time."""
+        if isinstance(value, (int, float)):
+            ts = float(value)
+            if ts > 1e12:
+                ts /= 1000.0
+            return datetime.fromtimestamp(ts)
+        return value
+
+    @field_validator("end_time", mode="before")
+    @classmethod
+    def _normalize_end_time(cls, value):
+        """Accept ISO strings or epoch seconds/milliseconds for end_time."""
+        if value is None:
+            return value
+        if isinstance(value, (int, float)):
+            ts = float(value)
+            if ts > 1e12:
+                ts /= 1000.0
+            return datetime.fromtimestamp(ts)
+        return value
     
 
 #Router Output

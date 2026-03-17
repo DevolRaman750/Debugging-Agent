@@ -12,10 +12,11 @@ import {
   ChatHistoryResponse,
   Reference,
   IntelligenceMetadata,
+  ChatTab as TopBarChatTab,
 } from "@/models/chat";
 import { useSafeAuth } from "@/hooks/useSafeAuth";
 import { generateUuidHex } from "@/utils/uuid";
-import TopBar, { TopBarRef } from "./TopBar";
+import TopBar from "@/components/right-panel/agent/TopBar";
 
 interface ChatTab {
   chatId: string | null;
@@ -75,7 +76,6 @@ export default function Agent({
   const [selectedProvider, setSelectedProvider] =
     useState<Provider>(DEFAULT_PROVIDER);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const topBarRef = useRef<TopBarRef>(null);
   const { getToken } = useSafeAuth();
   const effectiveTraceId = traceId || traceIds[0];
 
@@ -402,10 +402,6 @@ export default function Agent({
       setActiveChatId(chatIds[0]);
     }
 
-    // Refresh TopBar metadata after loading chats
-    setTimeout(() => {
-      topBarRef.current?.refreshMetadata();
-    }, 100);
   };
 
   const sendMessage = async (message: string) => {
@@ -505,9 +501,6 @@ export default function Agent({
               );
 
               if (newSpecialMessages.length > 0) {
-                // Refresh TopBar metadata when new special messages are added
-                topBarRef.current?.refreshMetadata();
-
                 const allMessages = [...currentMessages, ...newSpecialMessages];
 
                 // Sort by timestamp
@@ -652,8 +645,6 @@ export default function Agent({
           );
         });
 
-        // Refresh TopBar metadata when assistant message is posted
-        topBarRef.current?.refreshMetadata();
       } else {
         throw new Error(
           chatResponse.error || "Failed to get response from chat API",
@@ -697,8 +688,6 @@ export default function Agent({
         );
       });
 
-      // Refresh TopBar metadata when error message is posted
-      topBarRef.current?.refreshMetadata();
     } finally {
       // Clear the polling interval when loading is complete
       if (pollingInterval) {
@@ -713,24 +702,41 @@ export default function Agent({
     await sendMessage(inputMessage);
   };
 
+  const topBarTabs: TopBarChatTab[] = chatTabs.map((tab) => ({
+    id: tab.chatId || tab.tempId || "new-chat",
+    title: tab.title,
+    isNew: !tab.chatId,
+  }));
+
   return (
     <div className="h-full bg-white dark:bg-zinc-950 flex flex-col px-4 pt-2 pb-2">
       {/* Unified card container */}
       <div className="flex-1 flex flex-col min-h-0 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-zinc-50 dark:bg-zinc-900 overflow-hidden">
         {/* Top bar */}
         <TopBar
-          activeChatTabs={chatTabs}
-          activeChatId={activeChatId}
-          activeTempId={activeTempId}
-          traceId={effectiveTraceId}
-          messages={messages}
-          chatTitle={activeChat?.title}
+          tabs={topBarTabs}
+          activeTabId={
+            (activeChatId || activeTempId || topBarTabs[0]?.id || "new-chat") as string
+          }
+          traceId={effectiveTraceId || ""}
+          onTabSelect={(id: string) => {
+            const tab = chatTabs.find(
+              (item) => (item.chatId || item.tempId || "new-chat") === id,
+            );
+            if (!tab) return;
+            void handleChatSelect(tab.chatId, tab.tempId);
+          }}
+          onTabClose={(id: string) => {
+            const tab = chatTabs.find(
+              (item) => (item.chatId || item.tempId || "new-chat") === id,
+            );
+            if (!tab) return;
+            handleChatClose(tab.chatId, tab.tempId);
+          }}
           onNewChat={handleNewChat}
-          onChatSelect={handleChatSelect}
-          onChatClose={handleChatClose}
-          onHistoryItemsSelect={handleHistoryItemsSelect}
-          onUpdateChatTitle={updateChatTitle}
-          ref={topBarRef}
+          onHistoryItemSelect={(chatId: string) => {
+            void handleHistoryItemsSelect([chatId]);
+          }}
         />
 
         {/* Chat messages area */}

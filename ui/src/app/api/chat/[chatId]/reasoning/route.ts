@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import mongoose, { Model, Schema } from "mongoose";
 import dbConnect from "@/lib/mongodb";
+import { createBackendAuthHeaders } from "@/lib/server-auth-headers";
 
 interface ReasoningStreamDocument extends mongoose.Document {
   chat_id: string;
@@ -52,6 +53,39 @@ export async function GET(
 
     const url = new URL(request.url);
     const after = url.searchParams.get("after");
+
+    // If direct MongoDB is disabled, proxy reasoning fetch to Python backend.
+    if (!process.env.MONGODB_URI) {
+      const restApiEndpoint = process.env.REST_API_ENDPOINT;
+      if (!restApiEndpoint) {
+        return NextResponse.json({ success: true, data: [] });
+      }
+
+      const backendUrl = new URL(`${restApiEndpoint}/v1/explore/get-chat-reasoning`);
+      backendUrl.searchParams.set("chat_id", chatId);
+      if (after) {
+        backendUrl.searchParams.set("after", after);
+      }
+
+      const headers = await createBackendAuthHeaders(request);
+      const upstreamRes = await fetch(backendUrl.toString(), {
+        method: "GET",
+        headers,
+      });
+
+      const upstreamData = await upstreamRes.json().catch(() => ({}));
+      if (!upstreamRes.ok) {
+        return NextResponse.json({ success: true, data: [] });
+      }
+
+      const list: unknown[] = Array.isArray(upstreamData?.reasoning)
+        ? upstreamData.reasoning
+        : Array.isArray(upstreamData?.data)
+          ? upstreamData.data
+          : [];
+
+      return NextResponse.json({ success: true, data: list });
+    }
 
     await dbConnect();
 

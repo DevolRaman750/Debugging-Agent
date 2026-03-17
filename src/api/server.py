@@ -20,6 +20,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from src.service.provider import ObservabilityProvider
+from src.routing.chat_logic import ChatLogic
+from src.routing.types import ChatRequest
+from src.dao.factory import create_dao
+from routers.chat import ChatRouterClass
 
 app = FastAPI(title="TraceRoot API", version="0.1.0")
 
@@ -27,12 +31,18 @@ app = FastAPI(title="TraceRoot API", version="0.1.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://localhost:3001"],
-    allow_methods=["GET"],
+    allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
 
+# Register layered chat router (feedback endpoint, etc.)
+chat_router = ChatRouterClass()
+app.include_router(chat_router.router)
+
 # Shared provider instance (Jaeger)
 _provider: ObservabilityProvider | None = None
+_chat_logic: ChatLogic | None = None
+_dao = create_dao()
 
 
 def get_provider() -> ObservabilityProvider:
@@ -40,6 +50,13 @@ def get_provider() -> ObservabilityProvider:
     if _provider is None:
         _provider = ObservabilityProvider.create_jaeger_provider()
     return _provider
+
+
+def get_chat_logic() -> ChatLogic:
+    global _chat_logic
+    if _chat_logic is None:
+        _chat_logic = ChatLogic()
+    return _chat_logic
 
 
 # ── GET /v1/explore/list-traces ───────────────────────────────
@@ -200,6 +217,114 @@ async def get_logs_by_trace_id(
     return {
         "logs": trace_logs.model_dump(),
     }
+
+
+# ── POST /v1/explore/post-chat ─────────────────────────────────
+
+@app.post("/v1/explore/post-chat")
+async def post_chat(req_data: ChatRequest):
+    """Run chat logic and return an assistant response payload."""
+    try:
+        logic = get_chat_logic()
+        response = await logic.post_chat(req_data)
+        return response.model_dump(mode="json")
+    except Exception as exc:
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Failed to process chat: {str(exc)}"},
+        )
+
+
+# ── GET /v1/explore/get-chat-history ───────────────────────────
+
+@app.get("/v1/explore/get-chat-history")
+async def get_chat_history(chat_id: str = Query(..., description="Chat ID")):
+    """Return persisted chat history for one chat_id."""
+    try:
+        history = await _dao.get_chat_history(chat_id=chat_id)
+        return {"history": history or []}
+    except Exception as exc:
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Failed to load chat history: {str(exc)}"},
+        )
+
+
+# ── GET /v1/explore/get-chat-metadata ──────────────────────────
+
+@app.get("/v1/explore/get-chat-metadata")
+async def get_chat_metadata(chat_id: str = Query(..., description="Chat ID")):
+    """Return metadata for one chat session."""
+    try:
+        metadata = await _dao.get_chat_metadata(chat_id)
+        if metadata is None:
+            return JSONResponse(status_code=404, content={"error": "Chat metadata not found"})
+        return metadata.model_dump(mode="json")
+    except Exception as exc:
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Failed to load chat metadata: {str(exc)}"},
+        )
+
+
+# ── GET /v1/explore/get-chat-metadata-history ──────────────────
+
+@app.get("/v1/explore/get-chat-metadata-history")
+async def get_chat_metadata_history(
+    trace_id: str = Query(..., description="Trace ID"),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+):
+    """Return chat metadata history for a trace ID."""
+    try:
+        history = await _dao.get_chat_metadata_history(trace_id=trace_id)
+        items = history.history[skip: skip + limit]
+        return {
+            "success": True,
+            "data": {"history": [item.model_dump(mode="json") for item in items]},
+            "hasMore": len(history.history) > (skip + limit),
+        }
+    except Exception as exc:
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Failed to load chat metadata history: {str(exc)}"},
+        )
+
+
+# ── GET /v1/explore/get-chat-reasoning ─────────────────────────
+
+@app.get("/v1/explore/get-chat-reasoning")
+async def get_chat_reasoning(
+    chat_id: str = Query(..., description="Chat ID"),
+    after: Optional[float] = Query(None, description="Epoch ms/seconds lower bound"),
+):
+    """Return reasoning chunks for a chat, optionally filtered by timestamp."""
+    try:
+        chunks = await _dao.get_chat_reasoning(chat_id=chat_id)
+
+        if after is not None:
+            cutoff = float(after)
+            if cutoff > 1e12:
+                cutoff /= 1000.0
+
+            def _keep(item: dict) -> bool:
+                try:
+                    ts = item.get("timestamp")
+                    if isinstance(ts, str):
+                        dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+                        return dt.timestamp() > cutoff
+                    return False
+                except Exception:
+                    return False
+
+            chunks = [item for item in chunks if _keep(item)]
+
+        return {"reasoning": chunks}
+    except Exception as exc:
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Failed to load reasoning: {str(exc)}"},
+        )
 
 
 # ── Health ────────────────────────────────────────────────────
