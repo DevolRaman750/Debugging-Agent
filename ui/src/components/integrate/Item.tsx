@@ -64,7 +64,7 @@ export default function Item({ integration, onUpdateIntegration }: ItemProps) {
           return <SiOpenai size={size} className="text-foreground" />;
         case "anthropic":
           return <SiAnthropic size={size} className="text-foreground" />;
-        case "traceroot":
+        case "rootix":
           return (
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -100,7 +100,7 @@ export default function Item({ integration, onUpdateIntegration }: ItemProps) {
     return (
       <Avatar className="size-9 rounded-md">
         <AvatarFallback
-          className={`rounded-md ${iconName === "traceroot" ? (theme === "dark" ? "bg-white" : "bg-black") : "bg-muted"}`}
+          className={`rounded-md ${iconName === "rootix" ? (theme === "dark" ? "bg-white" : "bg-black") : "bg-muted"}`}
         >
           {getIconElement()}
         </AvatarFallback>
@@ -118,8 +118,8 @@ export default function Item({ integration, onUpdateIntegration }: ItemProps) {
         return ResourceType.SLACK;
       case "openai":
         return ResourceType.OPENAI;
-      case "traceroot":
-        return ResourceType.TRACEROOT;
+      case "rootix":
+        return ResourceType.ROOTIX;
       default:
         return ResourceType.GITHUB;
     }
@@ -145,7 +145,7 @@ export default function Item({ integration, onUpdateIntegration }: ItemProps) {
     setShowError(false);
 
     try {
-      // Use the existing post_connect endpoint with null token to generate TraceRoot token
+      // Use the existing post_connect endpoint with null token to generate Rootix token
       const response = await fetch("/api/post_connect", {
         method: "POST",
         headers: {
@@ -154,7 +154,7 @@ export default function Item({ integration, onUpdateIntegration }: ItemProps) {
         },
         body: JSON.stringify({
           token: null,
-          resourceType: ResourceType.TRACEROOT,
+          resourceType: ResourceType.ROOTIX,
         }),
       });
 
@@ -355,7 +355,7 @@ export default function Item({ integration, onUpdateIntegration }: ItemProps) {
     <Card>
       <CardHeader>
         <div className="flex items-center space-x-2.5">
-          {integration.id === "traceroot" ? (
+          {integration.id === "rootix" ? (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -429,16 +429,16 @@ export default function Item({ integration, onUpdateIntegration }: ItemProps) {
               type={showSecret ? "text" : "password"}
               value={isEditing ? authSecret : displayToken || authSecret}
               onChange={(e) => {
-                // Only allow editing if not TraceRoot
-                if (integration.id !== "traceroot") {
+                // Only allow editing if not Rootix
+                if (integration.id !== "rootix") {
                   setAuthSecret(e.target.value);
                   if (!isEditing) setIsEditing(true);
                 }
               }}
               onFocus={() => {
-                // Only allow editing if not TraceRoot
+                // Only allow editing if not Rootix
                 if (
-                  integration.id !== "traceroot" &&
+                  integration.id !== "rootix" &&
                   displayToken &&
                   !isEditing
                 ) {
@@ -447,21 +447,21 @@ export default function Item({ integration, onUpdateIntegration }: ItemProps) {
                 }
               }}
               placeholder={
-                integration.id === "traceroot"
+                integration.id === "rootix"
                   ? LOCAL_MODE
                     ? "Not needed in self-host mode"
-                    : "Generate the TraceRoot token"
+                    : "Generate the Rootix token"
                   : `Enter your ${integration.name} Authentication`
               }
-              readOnly={integration.id === "traceroot"}
+              readOnly={integration.id === "rootix"}
               aria-invalid={showError}
               className={`${
-                integration.id === "traceroot" ? "pr-20" : "pr-10"
-              } ${integration.id === "traceroot" ? "cursor-not-allowed" : ""}`}
+                integration.id === "rootix" ? "pr-20" : "pr-10"
+              } ${integration.id === "rootix" ? "cursor-not-allowed" : ""}`}
             />
 
-            {/* Copy button for TraceRoot only */}
-            {integration.id === "traceroot" && (
+            {/* Copy button for Rootix only */}
+            {integration.id === "rootix" && (
               <Button
                 type="button"
                 variant="ghost"
@@ -485,13 +485,13 @@ export default function Item({ integration, onUpdateIntegration }: ItemProps) {
           </div>
 
           <div className="flex gap-2">
-            {integration.id === "traceroot" ? (
+            {integration.id === "rootix" ? (
               <Button
                 onClick={handleGenerateToken}
                 disabled={
                   isLoading ||
                   displayToken !== "" ||
-                  (LOCAL_MODE && integration.id === "traceroot")
+                  (LOCAL_MODE && integration.id === "rootix")
                 }
                 variant="default"
                 size="sm"
@@ -513,7 +513,7 @@ export default function Item({ integration, onUpdateIntegration }: ItemProps) {
             <Button
               onClick={handleCancel}
               disabled={
-                isLoading || (LOCAL_MODE && integration.id === "traceroot")
+                isLoading || (LOCAL_MODE && integration.id === "rootix")
               }
               variant="outline"
               size="sm"

@@ -34,7 +34,7 @@ export const AVAILABLE_MODELS: ModelOption[] = [
     label: "Auto",
     value: "auto",
     provider: "openai",
-    description: "Let TraceRoot choose the best model",
+    description: "Let Rootix choose the best model",
   },
 ];
 

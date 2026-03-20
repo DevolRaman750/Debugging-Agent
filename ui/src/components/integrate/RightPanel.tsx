@@ -8,13 +8,13 @@ import { ResourceType } from "@/models/integrate";
 
 const initialIntegrations: Integration[] = [
   {
-    id: "traceroot",
-    name: "TraceRoot.AI",
-    description: "TraceRoot.AI Token",
-    icon: "traceroot",
+    id: "rootix",
+    name: "Rootix.AI",
+    description: "Rootix.AI Token",
+    icon: "rootix",
     categories: ["Debugging", "Tracing"],
     connected: false,
-    docs: "https://docs.traceroot.ai/",
+    docs: "https://docs.rootix.ai/",
     token: null,
   },
   {
@@ -117,7 +117,7 @@ export default function RightPanel() {
       fetchIntegrationToken(ResourceType.NOTION),
       fetchIntegrationToken(ResourceType.SLACK),
       fetchIntegrationToken(ResourceType.OPENAI),
-      fetchIntegrationToken(ResourceType.TRACEROOT),
+      fetchIntegrationToken(ResourceType.ROOTIX),
     ];
 
     try {
@@ -126,7 +126,7 @@ export default function RightPanel() {
         notionToken,
         slackToken,
         openaiToken,
-        tracerootToken,
+        rootixToken,
       ] = await Promise.all(tokenPromises);
 
       setIntegrations((prevIntegrations) =>
@@ -151,9 +151,9 @@ export default function RightPanel() {
               token = openaiToken;
               connected = !!openaiToken;
               break;
-            case "traceroot":
-              token = tracerootToken;
-              connected = !!tracerootToken;
+            case "rootix":
+              token = rootixToken;
+              connected = !!rootixToken;
               break;
           }
 
@@ -192,7 +192,7 @@ export default function RightPanel() {
           Integrations & Sources
         </h2>
         <p className="leading-7 [&:not(:first-child)]:mb-5">
-          Integrate tools and sources to TraceRoot.AI to enable AI-powered
+          Integrate tools and sources to Rootix.AI to enable AI-powered
           insights and actions.
         </p>
         <div className="grid grid-cols-2 md:grid-cols-2 gap-5 p-3">

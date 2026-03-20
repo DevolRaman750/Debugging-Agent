@@ -1,6 +1,6 @@
-# TraceRoot AI
+# Rootix AI
 
-TraceRoot AI is an intelligent root-cause analysis platform for distributed systems. It combines trace + log context with an agent-driven reasoning workflow to help engineers quickly answer questions like:
+Rootix AI is an intelligent root-cause analysis platform for distributed systems. It combines trace + log context with an agent-driven reasoning workflow to help engineers quickly answer questions like:
 
 - Why is this trace slow?
 - What failed first?
@@ -25,6 +25,49 @@ The repository includes:
 - Agent routing and RCA logic.
 - Frontend (Next.js + React) chat interface with trace-aware assistant mode.
 - Reasoning and metadata UX components for transparency of AI decisions.
+
+## Run Debugger Agent Locally
+
+Use the following startup sequence to run the full Rootix Debugger Agent stack.
+
+1. Start Jaeger (required for trace storage + query):
+
+```bash
+docker compose up -d jaeger
+```
+
+2. Start the Python backend API (from repository root):
+
+```bash
+python -m src.api.server
+```
+
+The backend listens on `http://localhost:8000`.
+
+3. Configure and start the UI (in a second terminal):
+
+```bash
+cd ui
+cp .env.example .env.local
+npm install
+npm run dev
+```
+
+The UI listens on `http://localhost:3000` and calls the backend via `REST_API_ENDPOINT`.
+
+4. (Optional) Generate sample traces so Explore/Agent has data(For now the SDK is not implemented):
+
+```bash
+python sample_app.py
+```
+
+5. Open the app at `http://localhost:3000` and use Explore + Agent mode.
+
+### Quick Health Checks
+
+- Jaeger UI: `http://localhost:16686`
+- Backend health: `http://localhost:8000/health`
+- UI: `http://localhost:3000`
 
 ## High-Level Architecture
 
@@ -100,6 +143,10 @@ Recent implementation additions include:
 
 ## Future Scope
 
+Temporary note:
+- SDK-based production application connectivity to Rootix is not implemented yet.
+- This will be implemented in a future release.
+
 1. GitHub API integration so users can create GitHub issues directly from RCA results.
 2. AgentOps integration for observability, evaluation, and lifecycle analytics of agents.
 3. Implement an eBPF (Extended Berkeley Packet Filter) agent for deeper low-level runtime diagnostics.
@@ -114,4 +161,4 @@ Recent implementation additions include:
 
 ## Vision
 
-TraceRoot AI aims to become a feedback-learning reliability copilot: not just explaining incidents, but continuously improving how quickly and accurately root causes are identified in real production systems.
+Rootix AI aims to become a feedback-learning reliability copilot: not just explaining incidents, but continuously improving how quickly and accurately root causes are identified in real production systems.

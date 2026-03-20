@@ -15,7 +15,7 @@ GROQ_MODEL = "llama-3.3-70b-versatile"
 # ── Database ──
 # Auto-detect: if MONGODB_URI is set → use MongoDB, otherwise SQLite
 MONGODB_URI = os.getenv("MONGODB_URI", "")
-SQLITE_DB_PATH = os.getenv("SQLITE_DB_PATH", "traceroot.db")
+SQLITE_DB_PATH = os.getenv("SQLITE_DB_PATH", "rootix.db")
 DB_BACKEND = os.getenv("DB_BACKEND", "mongodb" if MONGODB_URI else "sqlite")
 
 # ── Evaluation Feedback Loop ──

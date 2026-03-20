@@ -15,7 +15,7 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "TraceRoot — AI Distributed Trace Debugger",
+  title: "Rootix — AI Distributed Trace Debugger",
   description:
     "AI-powered root cause analysis for distributed traces. " +
     "Identifies N+1 queries, slow queries, retry storms, and cascading failures.",

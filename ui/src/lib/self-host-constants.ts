@@ -5,6 +5,6 @@
 
 export const LOCAL_USER = {
   USER_ID: "local-user",
-  USER_EMAIL: "local@traceroot.local",
+  USER_EMAIL: "local@rootix.local",
   USER_SECRET: "local-secret-token",
 } as const;

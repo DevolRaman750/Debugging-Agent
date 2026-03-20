@@ -32,7 +32,7 @@ function normalizePythonTrace(raw: Record<string, unknown>): Trace {
 
 // ── GET /api/list_trace ──────────────────────────────────────
 // Proxies to REST_API_ENDPOINT/v1/explore/list-traces
-// See: TRACEROOT_UI_REFERENCE.md — FLOW 1 (Trace Fetching)
+// See: ROOTIX_UI_REFERENCE.md — FLOW 1 (Trace Fetching)
 export async function GET(
   request: Request,
 ): Promise<NextResponse<TraceResponse>> {

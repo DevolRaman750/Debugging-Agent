@@ -1,5 +1,5 @@
 """
-TraceRoot REST API Server
+Rootix REST API Server
 ═════════════════════════
 Serves trace and log data from Jaeger to the Next.js frontend.
 
@@ -25,7 +25,7 @@ from src.routing.types import ChatRequest
 from src.dao.factory import create_dao
 from routers.chat import ChatRouterClass
 
-app = FastAPI(title="TraceRoot API", version="0.1.0")
+app = FastAPI(title="Rootix API", version="0.1.0")
 
 # Allow the Next.js dev server to call us
 app.add_middleware(
@@ -339,7 +339,7 @@ async def health():
 if __name__ == "__main__":
     import uvicorn
     print("=" * 55)
-    print("  TraceRoot REST API Server")
+    print("  Rootix REST API Server")
     print("  http://localhost:8000")
     print("  Jaeger backend: http://localhost:16686")
     print("=" * 55)

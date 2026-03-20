@@ -15,7 +15,7 @@ import { getAuthUser, getSessionToken } from "./clerk-auth";
  *   X-User-Sub: user_clerk_id
  *
  * In development (no Clerk):
- *   X-User-Email: dev@traceroot.local
+ *   X-User-Email: dev@rootix.local
  *   X-User-Sub: dev_user
  */
 export async function createBackendAuthHeaders(

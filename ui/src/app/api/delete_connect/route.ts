@@ -3,7 +3,7 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { createHash } from "crypto";
 import { ResourceType } from "@/models/integrate";
 import { connectToDatabase, isMongoDBAvailable } from "@/lib/mongodb";
-import { ConnectionToken, TracerootToken } from "@/models/token";
+import { ConnectionToken, RootixToken } from "@/models/token";
 
 interface DeleteIntegrationRequest {
   resource_type: string;
@@ -79,9 +79,9 @@ export async function DELETE(
 
     let deleteResult;
 
-    if (resource_type === ResourceType.TRACEROOT) {
-      // Delete from traceroot_tokens collection using user_email
-      deleteResult = await TracerootToken.deleteMany({
+    if (resource_type === ResourceType.ROOTIX) {
+      // Delete from rootix_tokens collection using user_email
+      deleteResult = await RootixToken.deleteMany({
         user_email: userEmail,
       });
     } else {

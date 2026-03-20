@@ -2,9 +2,9 @@
 // Provider Utilities
 // ══════════════════════════════════════════════════════════════
 
-const STORAGE_KEY = "traceroot_provider_config";
-const SELECTION_PREFIX = "traceroot_provider_selection";
-const SPECIFIC_CONFIG_PREFIX = "traceroot_provider_specific";
+const STORAGE_KEY = "rootix_provider_config";
+const SELECTION_PREFIX = "rootix_provider_selection";
+const SPECIFIC_CONFIG_PREFIX = "rootix_provider_specific";
 
 const LOCAL_MODE = process.env.NEXT_PUBLIC_LOCAL_MODE === "true";
 

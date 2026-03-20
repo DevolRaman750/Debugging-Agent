@@ -154,7 +154,7 @@ class Evaluator:
     def __init__(self, dao, config_path: str | None = None):
         """
         Args:
-            dao: Database client (TraceRootSQLiteClient or TraceRootMongoDBClient)
+            dao: Database client (RootixSQLiteClient or RootixMongoDBClient)
             config_path: Path to eval_config.json (None = default location)
         """
         self.dao = dao

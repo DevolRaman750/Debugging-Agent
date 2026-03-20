@@ -1,6 +1,6 @@
-# TraceRoot UI — Full Implementation Plan (From Scratch)
+# Rootix UI — Full Implementation Plan (From Scratch)
 
-> **Goal**: Build the complete Next.js frontend for TraceRoot, fully compatible with the existing Python backend (Stages 1-9 of the KAN pipeline), including pattern matching display, feedback collection, intelligence metadata surfacing, and all telemetry flows.
+> **Goal**: Build the complete Next.js frontend for Rootix, fully compatible with the existing Python backend (Stages 1-9 of the KAN pipeline), including pattern matching display, feedback collection, intelligence metadata surfacing, and all telemetry flows.
 
 ---
 
@@ -129,9 +129,9 @@ ui/src/
 
 ### 1.4 Create Data Models
 
-Create all TypeScript interfaces exactly matching the Python backend response shapes. These are already documented in [TRACEROOT_UI_REFERENCE.md](file:///c:/traceroot-main/TRACEROOT_UI_REFERENCE.md) Section 6. Key files:
+Create all TypeScript interfaces exactly matching the Python backend response shapes. These are already documented in [Rootix_UI_REFERENCE.md](file:///c:/Rootix-main/Rootix_UI_REFERENCE.md) Section 6. Key files:
 
-#### [NEW] [src/models/trace.ts](file:///c:/traceroot-main/ui/src/models/trace.ts)
+#### [NEW] [src/models/trace.ts](file:///c:/Rootix-main/ui/src/models/trace.ts)
 ```typescript
 export interface Span {
   id: string;
@@ -168,7 +168,7 @@ export interface TraceResponse {
 }
 ```
 
-#### [NEW] [src/models/chat.ts](file:///c:/traceroot-main/ui/src/models/chat.ts)
+#### [NEW] [src/models/chat.ts](file:///c:/Rootix-main/ui/src/models/chat.ts)
 ```typescript
 export type MessageType = "assistant" | "user" | "github" | "statistics";
 export type ActionType = "agent_chat" | "pending_confirmation" | "github_create_issue" | "github_create_pr";
@@ -214,7 +214,7 @@ export interface ChatResponse {
 
 ### 1.5 Design System Tokens
 
-#### [NEW] [src/app/globals.css](file:///c:/traceroot-main/ui/src/app/globals.css) — Core design tokens
+#### [NEW] [src/app/globals.css](file:///c:/Rootix-main/ui/src/app/globals.css) — Core design tokens
 ```css
 :root {
   --background: 0 0% 100%;
@@ -229,7 +229,7 @@ export interface ChatResponse {
   --ring: 240 5.9% 10%;
   --radius: 0.5rem;
 
-  /* TraceRoot custom tokens */
+  /* Rootix custom tokens */
   --p50: 142 71% 45%;      /* Green */
   --p75: 48 96% 53%;       /* Yellow */
   --p90: 25 95% 53%;       /* Orange */
@@ -248,7 +248,7 @@ export interface ChatResponse {
 
 ### 2.1 Clerk Setup
 
-#### [NEW] [src/middleware.ts](file:///c:/traceroot-main/ui/src/middleware.ts)
+#### [NEW] [src/middleware.ts](file:///c:/Rootix-main/ui/src/middleware.ts)
 ```typescript
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
@@ -276,7 +276,7 @@ export const config = {
 
 ### 2.3 Layout
 
-#### [NEW] [src/app/layout.tsx](file:///c:/traceroot-main/ui/src/app/layout.tsx)
+#### [NEW] [src/app/layout.tsx](file:///c:/Rootix-main/ui/src/app/layout.tsx)
 - `<ClerkProvider>` wrapping the entire app
 - Root layout with `<SideBar>` + main content area
 - Font: Inter from Google Fonts
@@ -289,7 +289,7 @@ export const config = {
 
 ### 3.1 API Routes
 
-#### [NEW] [src/app/api/provider-config/route.ts](file:///c:/traceroot-main/ui/src/app/api/provider-config/route.ts)
+#### [NEW] [src/app/api/provider-config/route.ts](file:///c:/Rootix-main/ui/src/app/api/provider-config/route.ts)
 | Method | Action |
 |--------|--------|
 | GET | Load `TraceProviderConfig` + `LogProviderConfig` from MongoDB |
@@ -298,7 +298,7 @@ export const config = {
 
 ### 3.2 Mongoose Schemas
 
-#### [NEW] [src/models/provider.ts](file:///c:/traceroot-main/ui/src/models/provider.ts)
+#### [NEW] [src/models/provider.ts](file:///c:/Rootix-main/ui/src/models/provider.ts)
 - `TraceProviderConfig` schema: `userEmail`, `traceProvider`, `awsTraceConfig`, `jaegerTraceConfig`, `tencentTraceConfig`
 - `LogProviderConfig` schema: same structure for logs
 
@@ -322,12 +322,12 @@ export const config = {
 
 ### 4.1 API Routes
 
-#### [NEW] [src/app/api/get_connect/route.ts](file:///c:/traceroot-main/ui/src/app/api/get_connect/route.ts)
+#### [NEW] [src/app/api/get_connect/route.ts](file:///c:/Rootix-main/ui/src/app/api/get_connect/route.ts)
 - GET: Fetch token by `resourceType` + `user_email`
-- Queries `traceroot_tokens` or `connection_tokens` collection
+- Queries `Rootix_tokens` or `connection_tokens` collection
 
 #### [NEW] `src/app/api/post_connect/route.ts`
-- POST: Upsert token with `resourceType` + [token](file:///c:/traceroot-main/rest/driver/chat_logic.py#250-263)
+- POST: Upsert token with `resourceType` + [token](file:///c:/Rootix-main/rest/driver/chat_logic.py#250-263)
 
 #### [NEW] `src/app/api/delete_connect/route.ts`
 - DELETE: Remove token
@@ -338,7 +338,7 @@ export const config = {
 - Token input field (password type with show/hide toggle)
 - Save / Update / Delete buttons
 - Status indicator (connected ✅ / not connected ❌)
-- Resource types: TraceRoot SDK, GitHub, OpenAI
+- Resource types: Rootix SDK, GitHub, OpenAI
 
 #### [NEW] `src/components/integrate/RightPanel.tsx`
 - SDK integration guide (code snippets for Python/Node.js/Java)
@@ -350,28 +350,28 @@ export const config = {
 
 ### 5.1 API Route
 
-#### [NEW] [src/app/api/list_trace/route.ts](file:///c:/traceroot-main/ui/src/app/api/list_trace/route.ts)
+#### [NEW] [src/app/api/list_trace/route.ts](file:///c:/Rootix-main/ui/src/app/api/list_trace/route.ts)
 - Proxies to `REST_API_ENDPOINT/v1/explore/list-traces`
-- Forwards: `startTime`, `endTime`, `categories[]`, `values[]`, `operations[]`, [trace_provider](file:///c:/traceroot-main/rest/dao/mongodb_dao.py#101-115), [log_provider](file:///c:/traceroot-main/rest/dao/mongodb_dao.py#116-130), `trace_region`, `log_region`, [trace_id](file:///c:/traceroot-main/rest/routers/telemetry.py#111-151), [pagination_token](file:///c:/traceroot-main/rest/utils/pagination.py#137-156)
+- Forwards: `startTime`, `endTime`, `categories[]`, `values[]`, `operations[]`, [trace_provider](file:///c:/Rootix-main/rest/dao/mongodb_dao.py#101-115), [log_provider](file:///c:/Rootix-main/rest/dao/mongodb_dao.py#116-130), `trace_region`, `log_region`, [trace_id](file:///c:/Rootix-main/rest/routers/telemetry.py#111-151), [pagination_token](file:///c:/Rootix-main/rest/utils/pagination.py#137-156)
 - Auth: `createBackendAuthHeaders()` using Clerk
 
 ### 5.2 UI Components
 
-#### [NEW] [src/components/explore/ExploreHeader.tsx](file:///c:/traceroot-main/ui/src/components/explore/ExploreHeader.tsx)
+#### [NEW] [src/components/explore/ExploreHeader.tsx](file:///c:/Rootix-main/ui/src/components/explore/ExploreHeader.tsx)
 - Container for SearchBar + TimeButton + RefreshButton
 
-#### [NEW] [src/components/explore/SearchBar.tsx](file:///c:/traceroot-main/ui/src/components/explore/SearchBar.tsx)
+#### [NEW] [src/components/explore/SearchBar.tsx](file:///c:/Rootix-main/ui/src/components/explore/SearchBar.tsx)
 - Multi-criterion filter builder
 - Each criterion: category dropdown (service_name, span_name, status_code) + operation dropdown (equals, contains, not_equals) + value input
 - Add/remove criteria buttons
 - Applies filters on submit
 
-#### [NEW] [src/components/explore/TimeButton.tsx](file:///c:/traceroot-main/ui/src/components/explore/TimeButton.tsx)
+#### [NEW] [src/components/explore/TimeButton.tsx](file:///c:/Rootix-main/ui/src/components/explore/TimeButton.tsx)
 - Preset buttons: 5m, 15m, 30m, 1h, 3h, 6h, 12h, 24h
 - Custom time range dialog (absolute start/end pickers)
 - UTC/Local toggle
 
-#### [NEW] [src/components/explore/Trace.tsx](file:///c:/traceroot-main/ui/src/components/explore/Trace.tsx) (~800-1000 lines)
+#### [NEW] [src/components/explore/Trace.tsx](file:///c:/Rootix-main/ui/src/components/explore/Trace.tsx) (~800-1000 lines)
 
 **This is the largest and most complex component.** Key features:
 
@@ -382,7 +382,7 @@ export const config = {
 | Expand/collapse | `+/-` button expands to show nested `<Span>` tree |
 | Multi-select | Checkboxes with shift-click range selection |
 | Auto-select | First trace selected on load; `?trace_id=` in URL auto-selects |
-| Pagination | "Load More" button, sends [pagination_token](file:///c:/traceroot-main/rest/utils/pagination.py#137-156) |
+| Pagination | "Load More" button, sends [pagination_token](file:///c:/Rootix-main/rest/utils/pagination.py#137-156) |
 | Share | Copy URL with `?trace_id=` parameter to clipboard |
 | Selection callbacks | `onTraceSelect(traceIds)`, `onSpanSelect(spanIds)` → updates right panel |
 
@@ -415,18 +415,18 @@ interface ExploreState {
 
 ### 6.1 API Route
 
-#### [NEW] [src/app/api/get_trace_log/route.ts](file:///c:/traceroot-main/ui/src/app/api/get_trace_log/route.ts)
+#### [NEW] [src/app/api/get_trace_log/route.ts](file:///c:/Rootix-main/ui/src/app/api/get_trace_log/route.ts)
 - Proxies to `REST_API_ENDPOINT/v1/explore/get-logs-by-trace-id`
-- Forwards: [trace_id](file:///c:/traceroot-main/rest/routers/telemetry.py#111-151), `start_time`, `end_time`, `log_group_name`, provider params
+- Forwards: [trace_id](file:///c:/Rootix-main/rest/routers/telemetry.py#111-151), `start_time`, `end_time`, `log_group_name`, provider params
 - 90 second timeout
 
 ### 6.2 UI Components
 
-#### [NEW] [src/components/right-panel/RightPanelSwitch.tsx](file:///c:/traceroot-main/ui/src/components/right-panel/RightPanelSwitch.tsx)
+#### [NEW] [src/components/right-panel/RightPanelSwitch.tsx](file:///c:/Rootix-main/ui/src/components/right-panel/RightPanelSwitch.tsx)
 - Receives `viewType`, `traceIds`, `spanIds`, `allTraces`
 - Routes to `LogPanelSwitch` or `TracePanelSwitch`
 
-#### [NEW] [src/components/right-panel/ModeToggle.tsx](file:///c:/traceroot-main/ui/src/components/right-panel/ModeToggle.tsx)
+#### [NEW] [src/components/right-panel/ModeToggle.tsx](file:///c:/Rootix-main/ui/src/components/right-panel/ModeToggle.tsx)
 - Three toggle buttons: Log (📄), Trace (🔭), Agent (🤖)
 - Controls `viewType` and `agentOpen` state
 
@@ -465,18 +465,18 @@ interface ExploreState {
 
 ### 8.1 API Routes
 
-#### [NEW] [src/app/api/chat/route.ts](file:///c:/traceroot-main/ui/src/app/api/chat/route.ts)
+#### [NEW] [src/app/api/chat/route.ts](file:///c:/Rootix-main/ui/src/app/api/chat/route.ts)
 - POST: Proxies to `REST_API_ENDPOINT/v1/explore/post-chat`
-- Request body: [ChatRequest](file:///c:/traceroot-main/rest/config/chat.py#16-33) (message, trace_id, span_ids, model, mode, chat_id, providers)
-- Response: [ChatResponse](file:///c:/traceroot-main/ui/src/models/chat.ts#56-61) with [ChatbotResponse](file:///c:/traceroot-main/ui/src/models/chat.ts#46-55) containing [metadata](file:///c:/traceroot-main/src/routing/response_builder.py#325-367) (IntelligenceMetadata)
+- Request body: [ChatRequest](file:///c:/Rootix-main/rest/config/chat.py#16-33) (message, trace_id, span_ids, model, mode, chat_id, providers)
+- Response: [ChatResponse](file:///c:/Rootix-main/ui/src/models/chat.ts#56-61) with [ChatbotResponse](file:///c:/Rootix-main/ui/src/models/chat.ts#46-55) containing [metadata](file:///c:/Rootix-main/src/routing/response_builder.py#325-367) (IntelligenceMetadata)
 - Fallback: Static response when `REST_API_ENDPOINT` not set
 
-#### [NEW] [src/app/api/get_chat_history/route.ts](file:///c:/traceroot-main/ui/src/app/api/get_chat_history/route.ts)
+#### [NEW] [src/app/api/get_chat_history/route.ts](file:///c:/Rootix-main/ui/src/app/api/get_chat_history/route.ts)
 - GET: Proxies to `/v1/explore/get-chat-history`
 
 ### 8.2 UI Components
 
-#### [NEW] [src/components/right-panel/agent/Agent.tsx](file:///c:/traceroot-main/ui/src/components/right-panel/agent/Agent.tsx) (~700 lines)
+#### [NEW] [src/components/right-panel/agent/Agent.tsx](file:///c:/Rootix-main/ui/src/components/right-panel/agent/Agent.tsx) (~700 lines)
 
 **The chat orchestrator.** Key responsibilities:
 
@@ -484,7 +484,7 @@ interface ExploreState {
 |---------|--------|
 | Chat state | Messages array, loading state, current chat_id |
 | Send message | `POST /api/chat` with full request body |
-| Receive response | Parse [ChatResponse](file:///c:/traceroot-main/ui/src/models/chat.ts#56-61), extract [metadata](file:///c:/traceroot-main/src/routing/response_builder.py#325-367) |
+| Receive response | Parse [ChatResponse](file:///c:/Rootix-main/ui/src/models/chat.ts#56-61), extract [metadata](file:///c:/Rootix-main/src/routing/response_builder.py#325-367) |
 | Polling | Every 1s poll `GET /api/get_chat_history` for GitHub/statistics messages |
 | Multi-tab | Support multiple chat tabs per trace |
 | Auto-scroll | Scroll to bottom on new message |
@@ -513,7 +513,7 @@ const sendMessage = async (message: string) => {
 };
 ```
 
-#### [NEW] [src/components/right-panel/agent/MessageInput.tsx](file:///c:/traceroot-main/ui/src/components/right-panel/agent/MessageInput.tsx)
+#### [NEW] [src/components/right-panel/agent/MessageInput.tsx](file:///c:/Rootix-main/ui/src/components/right-panel/agent/MessageInput.tsx)
 - Auto-resizing textarea (1-5 rows)
 - Enter = submit, Shift+Enter = newline
 - Mode selector: Agent 🤖 / Chat 💬
@@ -522,14 +522,14 @@ const sendMessage = async (message: string) => {
 - Send button: disabled until trace selected + text non-empty
 - Disabled state: "Select a trace to start chatting"
 
-#### [NEW] [src/components/right-panel/agent/ChatMessage.tsx](file:///c:/traceroot-main/ui/src/components/right-panel/agent/ChatMessage.tsx)
+#### [NEW] [src/components/right-panel/agent/ChatMessage.tsx](file:///c:/Rootix-main/ui/src/components/right-panel/agent/ChatMessage.tsx)
 
 **The markdown renderer.** Must handle:
 
 | Pattern | Render As |
 |---------|-----------|
 | `[1]`, `[2]` | HoverCard popup → span_id, function_name, line_number, log_message. Click span_id → jump to log view |
-| `` ``[code](file:///c:/traceroot-main/rest/utils/pagination.py#207-242)`` `` | Code block with copy button (hover-to-show) |
+| `` ``[code](file:///c:/Rootix-main/rest/utils/pagination.py#207-242)`` `` | Code block with copy button (hover-to-show) |
 | `**bold**` | `<strong>` |
 | `*italic*` | `<em>` |
 | `` `inline` `` | `<code>` tag |
@@ -542,9 +542,9 @@ const sendMessage = async (message: string) => {
 **Message roles and avatars:**
 | Role | Avatar | Alignment |
 |------|--------|-----------|
-| [user](file:///c:/traceroot-main/rest/utils/auth.py#14-18) | Profile photo / initial letter | Right |
+| [user](file:///c:/Rootix-main/rest/utils/auth.py#14-18) | Profile photo / initial letter | Right |
 | `assistant` | 🤖 Robot icon | Left |
-| [github](file:///c:/traceroot-main/rest/driver/chat_logic.py#250-263) | GitHub Octocat | Left |
+| [github](file:///c:/Rootix-main/rest/driver/chat_logic.py#250-263) | GitHub Octocat | Left |
 | `statistics` | 📊 Chart icon | Left |
 
 ---
@@ -553,10 +553,10 @@ const sendMessage = async (message: string) => {
 
 ### 9.1 API Routes
 
-#### [NEW] [src/app/api/get_chat_metadata/route.ts](file:///c:/traceroot-main/ui/src/app/api/get_chat_metadata/route.ts)
+#### [NEW] [src/app/api/get_chat_metadata/route.ts](file:///c:/Rootix-main/ui/src/app/api/get_chat_metadata/route.ts)
 - GET: Proxies to `/v1/explore/get-chat-metadata`
 
-#### [NEW] [src/app/api/get_chat_metadata_history/route.ts](file:///c:/traceroot-main/ui/src/app/api/get_chat_metadata_history/route.ts)
+#### [NEW] [src/app/api/get_chat_metadata_history/route.ts](file:///c:/Rootix-main/ui/src/app/api/get_chat_metadata_history/route.ts)
 - GET: Proxies to `/v1/explore/get-chat-metadata-history`
 
 #### [NEW] `src/app/api/chat/[chatId]/reasoning/route.ts`
@@ -564,7 +564,7 @@ const sendMessage = async (message: string) => {
 
 ### 9.2 UI Components
 
-#### [NEW] [src/components/right-panel/agent/TopBar.tsx](file:///c:/traceroot-main/ui/src/components/right-panel/agent/TopBar.tsx)
+#### [NEW] [src/components/right-panel/agent/TopBar.tsx](file:///c:/Rootix-main/ui/src/components/right-panel/agent/TopBar.tsx)
 - Multi-tab row with animated title transitions
 - `+` button: new chat tab
 - `⏱` button: history dropdown
@@ -572,7 +572,7 @@ const sendMessage = async (message: string) => {
 - Tab close `×` buttons
 - Active tab highlight
 
-#### [NEW] [src/components/right-panel/agent/chat-reasoning.tsx](file:///c:/traceroot-main/ui/src/components/right-panel/agent/chat-reasoning.tsx)
+#### [NEW] [src/components/right-panel/agent/chat-reasoning.tsx](file:///c:/Rootix-main/ui/src/components/right-panel/agent/chat-reasoning.tsx)
 - Collapsible accordion beneath each user message
 - Fetches reasoning steps via `/api/chat/[id]/reasoning`
 - Shows agent thinking process
@@ -584,13 +584,13 @@ const sendMessage = async (message: string) => {
 
 ### 10.1 API Route
 
-#### [NEW] [src/app/api/confirm-github-action/route.ts](file:///c:/traceroot-main/ui/src/app/api/confirm-github-action/route.ts)
+#### [NEW] [src/app/api/confirm-github-action/route.ts](file:///c:/Rootix-main/ui/src/app/api/confirm-github-action/route.ts)
 - POST: Proxies to `/v1/explore/confirm-github-action`
 - Body: `{ chat_id, message_timestamp, confirmed }`
 
 ### 10.2 UI — Confirmation Buttons
 
-In [ChatMessage.tsx](file:///c:/traceroot-main/ui/src/components/right-panel/agent/ChatMessage.tsx), when `status === "awaiting_confirmation"`:
+In [ChatMessage.tsx](file:///c:/Rootix-main/ui/src/components/right-panel/agent/ChatMessage.tsx), when `status === "awaiting_confirmation"`:
 ```tsx
 <div className="flex gap-2 mt-2">
   <Button variant="default" onClick={() => onSendMessage("yes")}>
@@ -608,7 +608,7 @@ After confirmation, the response message renders GitHub URLs as clickable `PR #4
 
 ## PHASE 11: Intelligence Metadata + Feedback UI ⭐ (NEW)
 
-> **This is the unique part — not in the original TraceRoot UI. This surfaces your KAN pipeline intelligence and collects feedback for Stage 9.**
+> **This is the unique part — not in the original Rootix UI. This surfaces your KAN pipeline intelligence and collects feedback for Stage 9.**
 
 ### 11.1 Intelligence Metadata Display
 
@@ -654,15 +654,15 @@ On every assistant message with `message_type === "assistant"`:
 ### 11.3 Feedback API
 
 #### [NEW] `src/app/api/feedback/route.ts`
-- POST: Proxies to Python backend → updates [intelligence_metrics](file:///c:/traceroot-main/src/dao/sqlite_dao.py#538-613) record
+- POST: Proxies to Python backend → updates [intelligence_metrics](file:///c:/Rootix-main/src/dao/sqlite_dao.py#538-613) record
 - Body: `{ chat_id, message_timestamp, feedback: "positive" | "negative" }`
 - Backend calls `dao.update_user_feedback(chat_id, timestamp, feedback)`
 
-> **This feedback is consumed by Stage 9 (Evaluator)** in the weekly evaluation loop. The evaluator reads [intelligence_metrics](file:///c:/traceroot-main/src/dao/sqlite_dao.py#538-613) records with feedback, calculates pattern accuracy, and adjusts `eval_config.json`.
+> **This feedback is consumed by Stage 9 (Evaluator)** in the weekly evaluation loop. The evaluator reads [intelligence_metrics](file:///c:/Rootix-main/src/dao/sqlite_dao.py#538-613) records with feedback, calculates pattern accuracy, and adjusts `eval_config.json`.
 
 ### 11.4 Backend Changes Needed
 
-Add one new endpoint to [ChatRouterClass](file:///c:/traceroot-main/rest/routers/chat.py#30-323):
+Add one new endpoint to [ChatRouterClass](file:///c:/Rootix-main/rest/routers/chat.py#30-323):
 
 ```python
 # rest/routers/chat.py
@@ -684,13 +684,13 @@ async def update_feedback(self, request: Request, req_data: FeedbackRequest):
 
 ### 12.1 API Route
 
-#### [NEW] [src/app/api/get_line_context_content/route.ts](file:///c:/traceroot-main/ui/src/app/api/get_line_context_content/route.ts)
+#### [NEW] [src/app/api/get_line_context_content/route.ts](file:///c:/Rootix-main/ui/src/app/api/get_line_context_content/route.ts)
 - GET: Proxies to `/v1/explore/get-line-context-content`
-- Query: [url](file:///c:/traceroot-main/rest/utils/github.py#4-46) (GitHub file URL with line number)
+- Query: [url](file:///c:/Rootix-main/rest/utils/github.py#4-46) (GitHub file URL with line number)
 
 ### 12.2 UI — ShowCodeToggle
 
-In [LogDetail.tsx](file:///c:/traceroot-main/ui/src/components/right-panel/log/LogDetail.tsx), when a log entry has `git_url`:
+In [LogDetail.tsx](file:///c:/Rootix-main/ui/src/components/right-panel/log/LogDetail.tsx), when a log entry has `git_url`:
 
 ```
 ┌──────────────────────────────────────┐
@@ -742,48 +742,48 @@ In [LogDetail.tsx](file:///c:/traceroot-main/ui/src/components/right-panel/log/L
 ## Complete File Checklist
 
 ### Models (Phase 1)
-- [ ] [src/models/trace.ts](file:///c:/traceroot-main/ui/src/models/trace.ts) — Span, Trace, TraceResponse
-- [ ] [src/models/log.ts](file:///c:/traceroot-main/ui/src/models/log.ts) — LogLevel, LogEntry, SpanLog, TraceLog
-- [ ] [src/models/chat.ts](file:///c:/traceroot-main/ui/src/models/chat.ts) — ChatRequest, ChatbotResponse, Reference, IntelligenceMetadata, ChatMetadata
-- [ ] [src/models/code.ts](file:///c:/traceroot-main/ui/src/models/code.ts) — CodeResponse
-- [ ] [src/models/integrate.ts](file:///c:/traceroot-main/ui/src/models/integrate.ts) — ResourceType, TokenResource
-- [ ] [src/models/provider.ts](file:///c:/traceroot-main/ui/src/models/provider.ts) — Provider config Mongoose schemas
-- [ ] [src/models/token.ts](file:///c:/traceroot-main/ui/src/models/token.ts) — Token Mongoose schemas
+- [ ] [src/models/trace.ts](file:///c:/Rootix-main/ui/src/models/trace.ts) — Span, Trace, TraceResponse
+- [ ] [src/models/log.ts](file:///c:/Rootix-main/ui/src/models/log.ts) — LogLevel, LogEntry, SpanLog, TraceLog
+- [ ] [src/models/chat.ts](file:///c:/Rootix-main/ui/src/models/chat.ts) — ChatRequest, ChatbotResponse, Reference, IntelligenceMetadata, ChatMetadata
+- [ ] [src/models/code.ts](file:///c:/Rootix-main/ui/src/models/code.ts) — CodeResponse
+- [ ] [src/models/integrate.ts](file:///c:/Rootix-main/ui/src/models/integrate.ts) — ResourceType, TokenResource
+- [ ] [src/models/provider.ts](file:///c:/Rootix-main/ui/src/models/provider.ts) — Provider config Mongoose schemas
+- [ ] [src/models/token.ts](file:///c:/Rootix-main/ui/src/models/token.ts) — Token Mongoose schemas
 
 ### API Routes (Phases 3-12)
-- [ ] [src/app/api/provider-config/route.ts](file:///c:/traceroot-main/ui/src/app/api/provider-config/route.ts) — GET/POST/DELETE (direct MongoDB)
-- [ ] [src/app/api/get_connect/route.ts](file:///c:/traceroot-main/ui/src/app/api/get_connect/route.ts) — GET (direct MongoDB)
+- [ ] [src/app/api/provider-config/route.ts](file:///c:/Rootix-main/ui/src/app/api/provider-config/route.ts) — GET/POST/DELETE (direct MongoDB)
+- [ ] [src/app/api/get_connect/route.ts](file:///c:/Rootix-main/ui/src/app/api/get_connect/route.ts) — GET (direct MongoDB)
 - [ ] `src/app/api/post_connect/route.ts` — POST (direct MongoDB)
 - [ ] `src/app/api/delete_connect/route.ts` — DELETE (direct MongoDB)
-- [ ] [src/app/api/list_trace/route.ts](file:///c:/traceroot-main/ui/src/app/api/list_trace/route.ts) — GET → Python backend
-- [ ] [src/app/api/get_trace_log/route.ts](file:///c:/traceroot-main/ui/src/app/api/get_trace_log/route.ts) — GET → Python backend
-- [ ] [src/app/api/chat/route.ts](file:///c:/traceroot-main/ui/src/app/api/chat/route.ts) — POST → Python backend
-- [ ] [src/app/api/get_chat_history/route.ts](file:///c:/traceroot-main/ui/src/app/api/get_chat_history/route.ts) — GET → Python backend
-- [ ] [src/app/api/get_chat_metadata/route.ts](file:///c:/traceroot-main/ui/src/app/api/get_chat_metadata/route.ts) — GET → Python backend
-- [ ] [src/app/api/get_chat_metadata_history/route.ts](file:///c:/traceroot-main/ui/src/app/api/get_chat_metadata_history/route.ts) — GET → Python backend
+- [ ] [src/app/api/list_trace/route.ts](file:///c:/Rootix-main/ui/src/app/api/list_trace/route.ts) — GET → Python backend
+- [ ] [src/app/api/get_trace_log/route.ts](file:///c:/Rootix-main/ui/src/app/api/get_trace_log/route.ts) — GET → Python backend
+- [ ] [src/app/api/chat/route.ts](file:///c:/Rootix-main/ui/src/app/api/chat/route.ts) — POST → Python backend
+- [ ] [src/app/api/get_chat_history/route.ts](file:///c:/Rootix-main/ui/src/app/api/get_chat_history/route.ts) — GET → Python backend
+- [ ] [src/app/api/get_chat_metadata/route.ts](file:///c:/Rootix-main/ui/src/app/api/get_chat_metadata/route.ts) — GET → Python backend
+- [ ] [src/app/api/get_chat_metadata_history/route.ts](file:///c:/Rootix-main/ui/src/app/api/get_chat_metadata_history/route.ts) — GET → Python backend
 - [ ] `src/app/api/chat/[chatId]/reasoning/route.ts` — GET (MongoDB direct)
-- [ ] [src/app/api/confirm-github-action/route.ts](file:///c:/traceroot-main/ui/src/app/api/confirm-github-action/route.ts) — POST → Python backend
-- [ ] [src/app/api/get_line_context_content/route.ts](file:///c:/traceroot-main/ui/src/app/api/get_line_context_content/route.ts) — GET → Python backend
+- [ ] [src/app/api/confirm-github-action/route.ts](file:///c:/Rootix-main/ui/src/app/api/confirm-github-action/route.ts) — POST → Python backend
+- [ ] [src/app/api/get_line_context_content/route.ts](file:///c:/Rootix-main/ui/src/app/api/get_line_context_content/route.ts) — GET → Python backend
 - [ ] `src/app/api/feedback/route.ts` — POST → Python backend ⭐ NEW
 
 ### Components (Phases 2-12)
 - [ ] `src/components/side-bar/SideBar.tsx`
-- [ ] [src/components/explore/ExploreHeader.tsx](file:///c:/traceroot-main/ui/src/components/explore/ExploreHeader.tsx)
-- [ ] [src/components/explore/SearchBar.tsx](file:///c:/traceroot-main/ui/src/components/explore/SearchBar.tsx)
-- [ ] [src/components/explore/TimeButton.tsx](file:///c:/traceroot-main/ui/src/components/explore/TimeButton.tsx)
-- [ ] [src/components/explore/Trace.tsx](file:///c:/traceroot-main/ui/src/components/explore/Trace.tsx)
+- [ ] [src/components/explore/ExploreHeader.tsx](file:///c:/Rootix-main/ui/src/components/explore/ExploreHeader.tsx)
+- [ ] [src/components/explore/SearchBar.tsx](file:///c:/Rootix-main/ui/src/components/explore/SearchBar.tsx)
+- [ ] [src/components/explore/TimeButton.tsx](file:///c:/Rootix-main/ui/src/components/explore/TimeButton.tsx)
+- [ ] [src/components/explore/Trace.tsx](file:///c:/Rootix-main/ui/src/components/explore/Trace.tsx)
 - [ ] `src/components/explore/span/Span.tsx`
-- [ ] [src/components/right-panel/ModeToggle.tsx](file:///c:/traceroot-main/ui/src/components/right-panel/ModeToggle.tsx)
-- [ ] [src/components/right-panel/RightPanelSwitch.tsx](file:///c:/traceroot-main/ui/src/components/right-panel/RightPanelSwitch.tsx)
+- [ ] [src/components/right-panel/ModeToggle.tsx](file:///c:/Rootix-main/ui/src/components/right-panel/ModeToggle.tsx)
+- [ ] [src/components/right-panel/RightPanelSwitch.tsx](file:///c:/Rootix-main/ui/src/components/right-panel/RightPanelSwitch.tsx)
 - [ ] `src/components/right-panel/log/LogDetail.tsx`
 - [ ] `src/components/right-panel/log/ShowCodeToggle.tsx`
 - [ ] `src/components/right-panel/trace/TraceDetail.tsx`
 - [ ] `src/components/right-panel/trace/TraceDepthChart.tsx`
-- [ ] [src/components/right-panel/agent/Agent.tsx](file:///c:/traceroot-main/ui/src/components/right-panel/agent/Agent.tsx)
-- [ ] [src/components/right-panel/agent/TopBar.tsx](file:///c:/traceroot-main/ui/src/components/right-panel/agent/TopBar.tsx)
-- [ ] [src/components/right-panel/agent/ChatMessage.tsx](file:///c:/traceroot-main/ui/src/components/right-panel/agent/ChatMessage.tsx)
-- [ ] [src/components/right-panel/agent/MessageInput.tsx](file:///c:/traceroot-main/ui/src/components/right-panel/agent/MessageInput.tsx)
-- [ ] [src/components/right-panel/agent/chat-reasoning.tsx](file:///c:/traceroot-main/ui/src/components/right-panel/agent/chat-reasoning.tsx)
+- [ ] [src/components/right-panel/agent/Agent.tsx](file:///c:/Rootix-main/ui/src/components/right-panel/agent/Agent.tsx)
+- [ ] [src/components/right-panel/agent/TopBar.tsx](file:///c:/Rootix-main/ui/src/components/right-panel/agent/TopBar.tsx)
+- [ ] [src/components/right-panel/agent/ChatMessage.tsx](file:///c:/Rootix-main/ui/src/components/right-panel/agent/ChatMessage.tsx)
+- [ ] [src/components/right-panel/agent/MessageInput.tsx](file:///c:/Rootix-main/ui/src/components/right-panel/agent/MessageInput.tsx)
+- [ ] [src/components/right-panel/agent/chat-reasoning.tsx](file:///c:/Rootix-main/ui/src/components/right-panel/agent/chat-reasoning.tsx)
 - [ ] `src/components/settings/TraceProviderTabContent.tsx`
 - [ ] `src/components/settings/LogProviderTabContent.tsx`
 - [ ] `src/components/integrate/Item.tsx`
@@ -797,7 +797,7 @@ In [LogDetail.tsx](file:///c:/traceroot-main/ui/src/components/right-panel/log/L
 - [ ] `src/utils/uuid.ts`
 - [ ] `src/constants/model.ts`
 - [ ] `src/constants/colors.ts`
-- [ ] [src/middleware.ts](file:///c:/traceroot-main/ui/src/middleware.ts)
+- [ ] [src/middleware.ts](file:///c:/Rootix-main/ui/src/middleware.ts)
 
 ---
 

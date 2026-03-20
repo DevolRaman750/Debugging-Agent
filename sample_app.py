@@ -357,7 +357,7 @@ def scenario_8_happy_path():
 
 if __name__ == "__main__":
     print("=" * 65)
-    print("  TraceRoot Test Trace Generator")
+    print("  Rootix Test Trace Generator")
     print("  Generating 8 test scenarios...")
     print("=" * 65)
     print()

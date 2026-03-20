@@ -83,7 +83,7 @@ export default function SideBar() {
         <Link
           href="/explore"
           className="flex items-center gap-2 min-w-0"
-          aria-label="TraceRoot Home"
+          aria-label="Rootix Home"
         >
           <div
             className="w-8 h-8 shrink-0 rounded-lg bg-primary/20
@@ -94,7 +94,7 @@ export default function SideBar() {
           </div>
           {!collapsed && (
             <span className="text-sm font-semibold text-sidebar-foreground truncate">
-              TraceRoot
+              Rootix
             </span>
           )}
         </Link>

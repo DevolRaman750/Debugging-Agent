@@ -1,7 +1,7 @@
 """
 Evidence Synthesis & Validation
 ================================
-Stage 6 of the TraceRoot pipeline.
+Stage 6 of the Rootix pipeline.
 
 Takes the LLM's raw answer + references, validates them against the actual
 trace data, and produces a ValidatedResponse. Catches hallucinations before

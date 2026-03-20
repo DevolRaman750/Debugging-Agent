@@ -4,7 +4,7 @@ from src.agents.base import BaseAgent
 from src.routing.types import ChatbotResponse, ChatModel, MessageType
 from src.config import GROQ_API_KEY, GROQ_BASE_URL, GROQ_MODEL
 
-GENERAL_SYSTEM_PROMPT = """You are TraceRoot, a helpful AI assistant.
+GENERAL_SYSTEM_PROMPT = """You are Rootix, a helpful AI assistant.
 You can answer general questions about:
 - Software development and debugging concepts
 - Distributed systems and observability

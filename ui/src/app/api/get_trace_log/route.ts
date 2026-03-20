@@ -15,7 +15,7 @@ export interface LogResponse {
 
 // ── GET /api/get_trace_log ───────────────────────────────────
 // Proxies to REST_API_ENDPOINT/v1/explore/get-logs-by-trace-id
-// See: TRACEROOT_UI_REFERENCE.md — FLOW 2 (Log Fetching)
+// See: ROOTIX_UI_REFERENCE.md — FLOW 2 (Log Fetching)
 export async function GET(
   request: Request,
 ): Promise<NextResponse<LogResponse>> {

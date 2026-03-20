@@ -29,7 +29,7 @@ from src.config import GROQ_API_KEY, GROQ_BASE_URL, GROQ_MODEL
 # ═══════════════════════════════════════════════════════════════════════════════
 # SUMMARIZER PROMPT
 # ═══════════════════════════════════════════════════════════════════════════════
-SUMMARIZER_SYSTEM_PROMPT = """You are a helpful TraceRoot.AI assistant that summarizes multiple response chunks into a single coherent answer.
+SUMMARIZER_SYSTEM_PROMPT = """You are a helpful Rootix.AI assistant that summarizes multiple response chunks into a single coherent answer.
 
 Rules:
 1. Combine all answers into one concise, clear response.

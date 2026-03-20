@@ -3,7 +3,7 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { createHash } from "crypto";
 import { ResourceType } from "@/models/integrate";
 import { connectToDatabase, isMongoDBAvailable } from "@/lib/mongodb";
-import { ConnectionToken, TracerootToken } from "@/models/token";
+import { ConnectionToken, RootixToken } from "@/models/token";
 
 interface GetIntegrationResponse {
   success: boolean;
@@ -77,12 +77,12 @@ export async function GET(
 
     let token: string | null = null;
 
-    if (resourceType === ResourceType.TRACEROOT) {
-      // Query traceroot_tokens collection using user_email
-      const tracerootToken = await TracerootToken.findOne({
+    if (resourceType === ResourceType.ROOTIX) {
+      // Query rootix_tokens collection using user_email
+      const rootixToken = await RootixToken.findOne({
         user_email: userEmail,
       }).lean();
-      token = tracerootToken?.token || null;
+      token = rootixToken?.token || null;
     } else {
       // Query connection_tokens collection using user_email and token_type
       const connectionToken = await ConnectionToken.findOne({

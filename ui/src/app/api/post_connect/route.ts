@@ -3,7 +3,7 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { randomBytes, createHash } from "crypto";
 import { TokenResource, ResourceType } from "@/models/integrate";
 import { connectToDatabase, isMongoDBAvailable } from "@/lib/mongodb";
-import { ConnectionToken, TracerootToken } from "@/models/token";
+import { ConnectionToken, RootixToken } from "@/models/token";
 import { STSClient, AssumeRoleCommand } from "@aws-sdk/client-sts";
 
 interface IntegrationSecretResponse {
@@ -20,11 +20,11 @@ function hashUserSub(userSub: string): string {
 }
 
 /**
- * Generate a random TraceRoot token (matches Python implementation)
+ * Generate a random Rootix token (matches Python implementation)
  */
-function generateTracerootToken(): string {
+function generateRootixToken(): string {
   const tokenUuid = randomBytes(16).toString("hex");
-  return `traceroot-${tokenUuid}`;
+  return `rootix-${tokenUuid}`;
 }
 
 /**
@@ -129,12 +129,12 @@ export async function POST(
     // Validate request
     if (
       !tokenResource.token &&
-      tokenResource.resourceType !== ResourceType.TRACEROOT
+      tokenResource.resourceType !== ResourceType.ROOTIX
     ) {
       return NextResponse.json(
         {
           success: false,
-          error: "Token is required for non-TraceRoot resources",
+          error: "Token is required for non-Rootix resources",
         },
         { status: 400 },
       );
@@ -176,22 +176,22 @@ export async function POST(
 
     let token = tokenResource.token;
 
-    // Handle TraceRoot resource type
-    if (tokenResource.resourceType === ResourceType.TRACEROOT) {
+    // Handle Rootix resource type
+    if (tokenResource.resourceType === ResourceType.ROOTIX) {
       if (isLocalMode) {
         // Return fake token for local mode
         console.log(
-          `[${requestId}] Local mode - returning fake TraceRoot token`,
+          `[${requestId}] Local mode - returning fake Rootix token`,
         );
         return NextResponse.json({
           success: true,
-          token: "fake_traceroot_token_for_local_mode",
+          token: "fake_rootix_token_for_local_mode",
         });
       }
 
-      // Generate TraceRoot token and AWS credentials
-      token = generateTracerootToken();
-      console.log(`[${requestId}] Generated TraceRoot token`);
+      // Generate Rootix token and AWS credentials
+      token = generateRootixToken();
+      console.log(`[${requestId}] Generated Rootix token`);
 
       try {
         const userCredentials = await generateUserCredentials(
@@ -199,16 +199,16 @@ export async function POST(
           userEmail,
         );
 
-        // Connect to MongoDB and insert TraceRoot token
+        // Connect to MongoDB and insert Rootix token
         await connectToDatabase();
 
         // Delete existing tokens for this user (if any)
-        await TracerootToken.deleteMany({
+        await RootixToken.deleteMany({
           user_email: userEmail,
         });
 
         // Insert new token with credentials (flat structure matching Python)
-        await TracerootToken.create({
+        await RootixToken.create({
           token,
           user_email: userCredentials.user_email,
           user_sub: userCredentials.user_sub,
@@ -232,7 +232,7 @@ export async function POST(
             error:
               credError instanceof Error
                 ? credError.message
-                : "Failed to generate TraceRoot credentials",
+                : "Failed to generate Rootix credentials",
           },
           { status: 500 },
         );

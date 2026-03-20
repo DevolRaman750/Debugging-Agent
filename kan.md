@@ -1,4 +1,4 @@
-# Traceroot.ai Complete Architecture Blueprint
+# Rootix.ai Complete Architecture Blueprint
 
 > **Purpose**: Definitive schema for self-hosted implementation with all OSS + closed-source components mapped.
 > **Status**: Implementation roadmap — each node has file path, inputs, outputs, and connection points.
@@ -20,7 +20,7 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────┐
-│                           TRACEROOT COMPLETE SYSTEM                              │
+│                           ROOTIX COMPLETE SYSTEM                              │
 ├─────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                  │
 │   ┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐      │

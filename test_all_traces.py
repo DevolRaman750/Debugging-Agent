@@ -136,7 +136,7 @@ async def test_rca_agent(rca_agent, trace_id, tree, user_message, db_client=None
 
 async def main():
     print("=" * 70)
-    print("  TraceRoot — Test ALL Traces from Jaeger")
+    print("  Rootix — Test ALL Traces from Jaeger")
     print("  Service: ecommerce-backend-2")
     print("=" * 70)
 
@@ -231,7 +231,7 @@ async def main():
     print_section("STEP 5: SingleRCAAgent — Full End-to-End (All 8 Traces)")
     print("  Testing each trace with: 'Why is this trace slow?'")
     print("  Fast-path traces skip LLM; others call Groq.")
-    print("  Persistence: SQLite (traceroot.db)\n")
+    print("  Persistence: SQLite (rootix.db)\n")
 
     db_client = create_dao()
     rca_agent = SingleRCAAgent(groq_api_key=GROQ_API_KEY)
@@ -331,7 +331,7 @@ async def main():
                 meta_count += 1
         print(f"  🏷️   chat_metadata: {meta_count} entries")
 
-        print(f"\n  ✅ All records persisted to traceroot.db successfully!")
+        print(f"\n  ✅ All records persisted to rootix.db successfully!")
 
     except Exception as e:
         print(f"  ❌ DB verification failed: {e}")

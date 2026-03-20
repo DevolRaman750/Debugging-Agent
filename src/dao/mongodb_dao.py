@@ -1,9 +1,9 @@
 """
-MongoDB Persistence Layer for TraceRoot
+MongoDB Persistence Layer for Rootix
 =========================================
 Production database using motor (async MongoDB driver).
 
-Same interface as TraceRootSQLiteClient — both are interchangeable.
+Same interface as RootixSQLiteClient — both are interchangeable.
 
 5 Collections:
   1. chat_records          — Every user/assistant message
@@ -14,7 +14,7 @@ Same interface as TraceRootSQLiteClient — both are interchangeable.
 
 SETUP:
   pip install motor
-  export MONGODB_URI="mongodb+srv://user:pass@cluster.mongodb.net/traceroot"
+  export MONGODB_URI="mongodb+srv://user:pass@cluster.mongodb.net/rootix"
 """
 
 import os
@@ -25,10 +25,10 @@ from src.dao.types import ChatMetadata, ChatMetadataHistory
 
 # MongoDB URI from environment
 MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017")
-MONGODB_DB = os.getenv("MONGODB_DB", "traceroot")
+MONGODB_DB = os.getenv("MONGODB_DB", "rootix")
 
 
-class TraceRootMongoDBClient:
+class RootixMongoDBClient:
 
     def __init__(self, uri: str = MONGODB_URI, db_name: str = MONGODB_DB):
         # Lazy import — motor is only needed if using MongoDB

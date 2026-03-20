@@ -138,7 +138,7 @@ async def run_one(agent, provider, trace_id, label):
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 async def main():
-    separator("TraceRoot — Response Inspector")
+    separator("Rootix — Response Inspector")
 
     # Fetch all traces
     resp = requests.get(

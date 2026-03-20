@@ -9,7 +9,7 @@ export default function LoginPage() {
         <div className="flex flex-col items-center space-y-4">
           <div className="text-center">
             <h1 className="text-3xl font-bold tracking-tight">
-              Welcome to TraceRoot.AI
+              Welcome to Rootix.AI
             </h1>
             <p className="mt-2 text-sm text-muted-foreground">
               Sign in to continue

@@ -26,7 +26,7 @@ export interface AuthUser {
 /** Dev-mode fallback user. */
 const DEV_USER: AuthUser = {
   userId: "dev_user",
-  email: "dev@traceroot.local",
+  email: "dev@rootix.local",
   fullName: "Dev User",
   imageUrl: null,
   isAuthenticated: false,
@@ -57,7 +57,7 @@ export async function getAuthUser(): Promise<AuthUser> {
     return {
       userId,
       email:
-        user?.emailAddresses?.[0]?.emailAddress ?? "unknown@traceroot.local",
+        user?.emailAddresses?.[0]?.emailAddress ?? "unknown@rootix.local",
       fullName:
         [user?.firstName, user?.lastName].filter(Boolean).join(" ") || null,
       imageUrl: user?.imageUrl ?? null,

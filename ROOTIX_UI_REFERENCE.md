@@ -1,6 +1,6 @@
-# TraceRoot UI — Complete Reference Document
+# Rootix UI — Complete Reference Document
 
-> This file is a self-contained reference for the entire TraceRoot frontend UI, backend API layer, data models, component tree, and every data flow. It is designed to be given to an LLM as full context for understanding, modifying, or extending TraceRoot.
+> This file is a self-contained reference for the entire Rootix frontend UI, backend API layer, data models, component tree, and every data flow. It is designed to be given to an LLM as full context for understanding, modifying, or extending Rootix.
 
 ---
 
@@ -31,7 +31,7 @@
 
 ## 1. System Architecture Overview
 
-TraceRoot is a 2-layer proxy architecture:
+Rootix is a 2-layer proxy architecture:
 
 ```
 Browser (Next.js App)
@@ -80,7 +80,7 @@ Python FastAPI Backend       MongoDB (Direct)
 ## 3. Directory Structure
 
 ```
-traceroot-main/
+rootix-main/
 ├── ui/                            ← Next.js frontend
 │   └── src/
 │       ├── app/
@@ -197,7 +197,7 @@ traceroot-main/
 |---|---|---|---|
 | `/` | `page.tsx` | Yes | Redirects to `/explore` |
 | `/explore` | `explore/page.tsx` | Yes | Main dashboard: trace list + log/trace view + agent chat |
-| `/integrate` | `integrate/page.tsx` | Yes | SDK integration: manage API tokens (TraceRoot, GitHub, etc.) |
+| `/integrate` | `integrate/page.tsx` | Yes | SDK integration: manage API tokens (Rootix, GitHub, etc.) |
 | `/settings` | `settings/page.tsx` | Yes | Provider config: Jaeger, AWS, Tencent connection settings |
 | `/pricing` | `pricing/page.tsx` | No | Pricing plans (Autumn billing integration) |
 | `/sign-in` | `sign-in/page.tsx` | No | Clerk sign-in page |
@@ -463,7 +463,7 @@ interface CodeResponse {
 ### Integration Models (`ui/src/models/integrate.ts`)
 
 ```typescript
-enum ResourceType { GITHUB, NOTION, SLACK, OPENAI, TRACEROOT }
+enum ResourceType { GITHUB, NOTION, SLACK, OPENAI, ROOTIX }
 
 interface TokenResource {
   token?: string | null;
@@ -500,7 +500,7 @@ These **skip the Python backend entirely**. The Next.js API route connects to Mo
 | 10 | `/api/provider-config` | GET | `trace_provider_configs` + `log_provider_configs` | Load provider settings |
 | 11 | `/api/provider-config` | POST | same | Save provider settings |
 | 12 | `/api/provider-config` | DELETE | same | Delete provider settings |
-| 13 | `/api/get_connect` | GET | `traceroot_tokens` or `connection_tokens` | Fetch integration token |
+| 13 | `/api/get_connect` | GET | `rootix_tokens` or `connection_tokens` | Fetch integration token |
 | 14 | `/api/post_connect` | POST | same | Save integration token |
 | 15 | `/api/delete_connect` | DELETE | same | Delete integration token |
 
@@ -861,14 +861,14 @@ The selected provider is stored in localStorage and read by `buildProviderParams
 **THIS FLOW SKIPS THE PYTHON BACKEND.**
 
 ### Supported integrations:
-- **TraceRoot** — SDK token for OTel Collector. Stored in `traceroot_tokens` collection
+- **Rootix** — SDK token for OTel Collector. Stored in `rootix_tokens` collection
 - **GitHub** — Personal access token for code fetch + PR creation. Stored in `connection_tokens` collection
 - **Notion** — (placeholder)
 - **Slack** — (placeholder)
 - **OpenAI** — (placeholder, custom key)
 
 ### Fetch token:
-1. `GET /api/get_connect?resourceType=traceroot`
+1. `GET /api/get_connect?resourceType=rootix`
 2. Queries by `user_email` (from Clerk) + `token_type` (from ResourceType)
 3. Returns `{ success: true, token: "tr_abc123..." }`
 
@@ -881,7 +881,7 @@ The selected provider is stored in localStorage and read by `buildProviderParams
 2. Removes from `connection_tokens` collection
 
 ### User identification:
-The `get_connect` route uses `user_email` from Clerk's `currentUser()`. For TraceRoot tokens, it queries the `traceroot_tokens` collection. For other token types, it queries `connection_tokens` with both `user_email` and `token_type`.
+The `get_connect` route uses `user_email` from Clerk's `currentUser()`. For Rootix tokens, it queries the `rootix_tokens` collection. For other token types, it queries `connection_tokens` with both `user_email` and `token_type`.
 
 ---
 
@@ -949,4 +949,4 @@ The `get_connect` route uses `user_email` from Clerk's `currentUser()`. For Trac
 
 ---
 
-*End of TraceRoot UI Reference Document*
+*End of Rootix UI Reference Document*

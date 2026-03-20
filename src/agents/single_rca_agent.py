@@ -1,7 +1,7 @@
 """
 SingleRCAAgent - Root Cause Analysis agent for diagnostic queries.
 
-This agent is the heart of TraceRoot's RCA capability. It takes a span tree
+This agent is the heart of Rootix's RCA capability. It takes a span tree
 and a user question, runs the Intelligence Layer, and produces a human-readable
 root cause explanation.
 
@@ -37,7 +37,7 @@ from src.config import GROQ_API_KEY, GROQ_BASE_URL, GROQ_MODEL
 # ═══════════════════════════════════════════════════════════════════════════════
 # RCA SYSTEM PROMPT
 # ═══════════════════════════════════════════════════════════════════════════════
-SINGLE_RCA_SYSTEM_PROMPT = """You are TraceRoot, an AI assistant specialized in analyzing distributed traces and logs to find root causes of issues.
+SINGLE_RCA_SYSTEM_PROMPT = """You are Rootix, an AI assistant specialized in analyzing distributed traces and logs to find root causes of issues.
 
 Your capabilities:
 1. Analyze trace data to identify performance bottlenecks
@@ -178,14 +178,9 @@ class SingleRCAAgent(BaseAgent):
             span_features=span_features,
         )
 
-        # ═══════════════════════════════════════════════════════════════════════
-        # STEP 5: Chunk Context (split if > 200k chars)
-        # ═══════════════════════════════════════════════════════════════════════
         context_chunks = get_trace_context_messages(context)
 
-        # ═══════════════════════════════════════════════════════════════════════
-        # STEP 6: LLM Reasoning (send each chunk to Groq)
-        # ═══════════════════════════════════════════════════════════════════════
+     
         messages = [{"role": "system", "content": self.system_prompt}]
 
         # Add chat history for multi-turn context
@@ -208,9 +203,7 @@ class SingleRCAAgent(BaseAgent):
             )
             responses.append(response.choices[0].message.content)
 
-        # ═══════════════════════════════════════════════════════════════════════
-        # STEP 7: Summarize if Multiple Chunks
-        # ═══════════════════════════════════════════════════════════════════════
+       
         if len(responses) == 1:
             final_response = responses[0]
         else:

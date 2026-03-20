@@ -15,9 +15,9 @@ Usage:
 
 Environment Variables:
     DB_BACKEND       — "sqlite" (default) or "mongodb"
-    SQLITE_DB_PATH   — Path to SQLite file (default: "traceroot.db")
+    SQLITE_DB_PATH   — Path to SQLite file (default: "rootix.db")
     MONGODB_URI      — MongoDB connection string
-    MONGODB_DB       — MongoDB database name (default: "traceroot")
+    MONGODB_DB       — MongoDB database name (default: "rootix")
 """
 
 from src.config import DB_BACKEND, MONGODB_URI, SQLITE_DB_PATH
@@ -36,7 +36,7 @@ def create_dao(backend: str | None = None):
         backend: "sqlite" or "mongodb". If None, uses config auto-detection.
 
     Returns:
-        TraceRootSQLiteClient or TraceRootMongoDBClient
+        RootixSQLiteClient or RootixMongoDBClient
 
     Usage:
         dao = create_dao()           # Auto-detect from env
@@ -46,15 +46,15 @@ def create_dao(backend: str | None = None):
     chosen = backend or DB_BACKEND
 
     if chosen == "mongodb":
-        from src.dao.mongodb_dao import TraceRootMongoDBClient
+        from src.dao.mongodb_dao import RootixMongoDBClient
         import os
         uri = MONGODB_URI or "mongodb://localhost:27017"
-        db_name = os.getenv("MONGODB_DB", "traceroot")
-        return TraceRootMongoDBClient(uri=uri, db_name=db_name)
+        db_name = os.getenv("MONGODB_DB", "rootix")
+        return RootixMongoDBClient(uri=uri, db_name=db_name)
 
     elif chosen == "sqlite":
-        from src.dao.sqlite_dao import TraceRootSQLiteClient
-        return TraceRootSQLiteClient(db_path=SQLITE_DB_PATH)
+        from src.dao.sqlite_dao import RootixSQLiteClient
+        return RootixSQLiteClient(db_path=SQLITE_DB_PATH)
 
     else:
         raise ValueError(

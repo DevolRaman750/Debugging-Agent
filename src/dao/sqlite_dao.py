@@ -1,5 +1,5 @@
 """
-SQLite Persistence Layer for TraceRoot
+SQLite Persistence Layer for Rootix
 ========================================
 Local development database using aiosqlite.
 
@@ -20,10 +20,10 @@ import aiosqlite
 
 from src.dao.types import ChatMetadata, ChatMetadataHistory
 
-DB_PATH = os.getenv("SQLITE_DB_PATH", "traceroot.db")
+DB_PATH = os.getenv("SQLITE_DB_PATH", "rootix.db")
 
 
-class TraceRootSQLiteClient:
+class RootixSQLiteClient:
 
     def __init__(self, db_path: str = DB_PATH):
         self.db_path = db_path

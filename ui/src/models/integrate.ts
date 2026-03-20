@@ -7,7 +7,7 @@ export enum ResourceType {
   NOTION = "notion",
   SLACK = "slack",
   OPENAI = "openai",
-  TRACEROOT = "traceroot",
+  ROOTIX = "rootix",
 }
 
 export interface TokenResource {

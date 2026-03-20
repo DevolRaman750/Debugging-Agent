@@ -10,7 +10,7 @@ const MONGODB_URI = process.env.MONGODB_URI;
 
 if (!MONGODB_URI) {
   console.warn(
-    "[TraceRoot] MONGODB_URI not set — direct MongoDB routes disabled. " +
+    "[Rootix] MONGODB_URI not set — direct MongoDB routes disabled. " +
     "All data flows through the Python backend."
   );
 }
